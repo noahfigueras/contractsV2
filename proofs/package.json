@@ -1,0 +1,22 @@
+{
+  "name": "proofs",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "tsx index.ts"
+  },
+  "type": "module",
+  "author": "noahfigueras",
+  "license": "ISC",
+  "devDependencies": {
+    "@chainsafe/persistent-merkle-tree": "^0.7.1",
+    "@chainsafe/ssz": "^0.15.1",
+    "@lodestar/api": "^1.17.0",
+    "@lodestar/config": "^1.17.0",
+    "@lodestar/types": "^1.17.0",
+    "tsx": "^4.7.2",
+    "typescript": "^5.4.4"
+  }
+}
