@@ -72,10 +72,38 @@ changing `fee_recipient`.
 TODO
 
 ## Calculate rewards 
-How to calculate rewards using a pro-rata based distribution and also take into 
-account any misbehaviour of the validator. Ex: `fee_recipient` swap.
+In order to calculate rewards using a pro-rata based distribution, we need to 
+keep track of the time a user is been actively participating in the pool and 
+allocate him rewards based on timestamp. 
 
-TODO 
+For that, we define a constant `rewardIndex = 86400 * 7` (7 days) that specifies 
+the duration of a rebalance period. We can calculate the rewards based on the 
+user registration timestamp against the `rewardIndex` and using the validator 
+effective balance to calculate the power the following way. 
+
+```sol
+
+totalETH_to_rebalance = 1 ETH;
+
+user1 = {registrationTimestamp: 0, effectiveBalance: 32 } // First day
+user2 = {registrationTimestamp: 86400 * 3, effectiveBalance: 32 } // Third day
+user3 = {registrationTimestamp: 86400 * 6, effectiveBalance: 32 } // Sixth day
+
+// IN Smooth tokens
+calculate_rewards(user) {
+  return user.effectiveBalance * (rewardIndex - user.registrationTimestamp )
+}
+
+withdraw_to_eth(user) {
+  share = calculate_rewards(user)
+  address(this.balance) * (share / total_supply)
+  user.share = 0;
+  total_supply -= share;
+}
+```
+
+
+
 
 ## Generalized indices and Merkle Proofs
 
