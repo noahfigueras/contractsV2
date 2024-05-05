@@ -102,9 +102,6 @@ withdraw_to_eth(user) {
 }
 ```
 
-
-
-
 ## Generalized indices and Merkle Proofs
 
 If we need to proof some information stored in the beacon block body. It's easy.
