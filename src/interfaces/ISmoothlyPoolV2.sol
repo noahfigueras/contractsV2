@@ -7,4 +7,6 @@ interface ISmoothlyPoolV2 {
     uint256 effectiveBalance,
     address withdrawal
   );
+  error Unverified();
+  error WithdrawalsDisabled();
 }

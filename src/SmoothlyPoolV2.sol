@@ -5,6 +5,7 @@ import { ISmoothlyPoolV2 } from "./interfaces/ISmoothlyPoolV2.sol";
 import { BeaconOracle } from "./BeaconOracle.sol";
 import { Smooth } from "./Smooth.sol";
 import { SSZ } from "./SSZ.sol";
+import { console } from "forge-std/console.sol";
 
 contract SmoothlyPoolV2 is ISmoothlyPoolV2 {
   uint32 public constant REBALANCE_PERIOD = 7 days;
@@ -34,7 +35,7 @@ contract SmoothlyPoolV2 is ISmoothlyPoolV2 {
   }
 
   /// @dev register validator 
-  function register(uint64 validatorIndex, uint256 effectiveBalance) public {
+  function register(uint64 validatorIndex, uint256 effectiveBalance) external {
     uint256 time = block.timestamp;
     address withdrawal = msg.sender;
 
@@ -49,32 +50,44 @@ contract SmoothlyPoolV2 is ISmoothlyPoolV2 {
   }
 
   /// @dev Only possible to withdraw up to 'lastRebalance'
-  function withdraw(uint64 validatorIndex) public {
-    (address withdrawal, uint256 value) = _calculateEth(validatorIndex);
+  function withdraw(uint64 validatorIndex) external {
+    Registrant memory registrant = registrants[validatorIndex];
+    if(!registrant.verified) { revert Unverified(); }
+    (address withdrawal, uint256 value, uint256 share) = calculateEth(registrant);
     (bool sent, ) = withdrawal.call{ value: value }("");
     require(sent, "Failed to send ether");
+    smooth.burn(share);
   }
 
   /// @dev calculate share in 'eth' 
-  function _calculateEth(uint64 validatorIndex) 
-    internal returns (address withdrawal, uint256 eth) {
-    Registrant memory registrant = registrants[validatorIndex];
-    uint256 share = (registrant.claimable - lastRebalance) * registrant.effectiveBalance;
+  function calculateEth(Registrant memory registrant) 
+    public returns (address withdrawal, uint256 eth, uint256 share) {
+    if(registrant.claimable > lastRebalance) { revert WithdrawalsDisabled(); }
+    share = (lastRebalance - registrant.claimable) * registrant.effectiveBalance;
     eth = (share / smooth.totalSupply()) * address(this).balance; 
     withdrawal = registrant.withdrawal;
     registrant.claimable = block.timestamp;
-    smooth.burn(share);
+  }
+
+  /// @dev gets registrant by validator index
+  function getRegistrant(uint64 validatorIndex) public view returns (Registrant memory){
+    return registrants[validatorIndex];
   }
 
   /// @dev calculate share of current rebalance period
   function _allocateSmooth(uint256 effectiveBalance, uint256 timestamp) 
-    internal view returns (uint256 share) {
-    return REBALANCE_PERIOD - (lastRebalance - timestamp) * effectiveBalance;
+    internal returns (uint256 share) {
+    uint256 ellapsed = timestamp - lastRebalance;
+    if(ellapsed > REBALANCE_PERIOD) {
+      ellapsed = ellapsed - REBALANCE_PERIOD;
+      rebalance();
+    }
+    return (REBALANCE_PERIOD - ellapsed) * effectiveBalance;
   }
 
   /// @dev restarts rebalance period
-  function _rebalance() internal {
-    totalEB *= REBALANCE_PERIOD; 
+  function rebalance() public {
+    totalEB *= REBALANCE_PERIOD;
     lastRebalance = block.timestamp;
   }
 
