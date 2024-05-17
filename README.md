@@ -62,7 +62,7 @@ to have changed their withdrawals credentials to an eth1 address.
 
 2. For restaking users coming from eigen layer we could verify it by calling 
 the withdrawal address(eigen  pod) and verify the owner of that contract with 
-`EigenPodManager.sol::hasPod(msg.sender)`
+`EigenPodManager.sol::hasPodg.sender)`
 
 
 ## Slashing mechanism
@@ -74,32 +74,43 @@ TODO
 ## Calculate rewards 
 In order to calculate rewards using a pro-rata based distribution, we need to 
 keep track of the time a user is been actively participating in the pool and 
-allocate him rewards based on timestamp. 
+allocate him rewards based on timestamp and the EB provided by his validator. 
 
-For that, we define a constant `rewardIndex = 86400 * 7` (7 days) that specifies 
-the duration of a rebalance period. We can calculate the rewards based on the 
-user registration timestamp against the `rewardIndex` and using the validator 
-effective balance to calculate the power the following way. 
+For that, we define a constant `REBALANCE_PERIOD = 86400 * 7` (7 days) that specifies 
+the duration of a rebalance period. We can calculate the rewards using 
+the user claimable timestamp (updates after share is claimed) and EB against the 
+`lastRebalance` period timestamp. 
 
-```sol
+In order to take into account other pool participants shares, we introduce two 
+variables to keep track of the totalSupply: 
+* `totalEB` keeps track of the total EB of the participants in the pool.
+* `smooths` keeps track of the total share of participants in the pool to be distributed.
 
-totalETH_to_rebalance = 1 ETH;
+```
+USER_SHARE = (lastRebalance - claimableTimestamp) * EB;
+USER_ETH_SHARE = (SHARE / smooths) * TOTAL_POOL_BALANCE;
+```
 
-user1 = {registrationTimestamp: 0, effectiveBalance: 32 } // First day
-user2 = {registrationTimestamp: 86400 * 3, effectiveBalance: 32 } // Third day
-user3 = {registrationTimestamp: 86400 * 6, effectiveBalance: 32 } // Sixth day
+Let's look at the following example:
+```
+USER1 = {registrationTimestamp: 0, EB: 32 } // First day
+USER2 = {registrationTimestamp: 86400 * 3, EB: 64 } // Third day
+USER3 = {registrationTimestamp: 86400 * 6, EB: 32 } // Sixth day
 
-// IN Smooth tokens
-calculate_rewards(user) {
-  return user.effectiveBalance * (rewardIndex - user.registrationTimestamp )
-}
+// After 1 rebalance of 7 days, participants try to claim their share.
+TOTAL_POOL_BALANCE = 1 ETH;
+LAST_REBALANCE = 86400 * 7 // 7 DAYS;
 
-withdraw_to_eth(user) {
-  share = calculate_rewards(user)
-  address(this.balance) * (share / total_supply)
-  user.share = 0;
-  total_supply -= share;
-}
+SMOOTHS = (86400 * 7 * 32 + 86400 * 4 * 64 + 86400 * 32 ) // 44236800
+
+USER1_SHARE = (604800 - 0) * 32;
+USER1_ETH = (USER1_SHARE / SMOOTHS) * TOTAL_POOL_BALANCE; // 0.4375 ETH
+
+USER2_SHARE = (604800 - 86400 * 3) * 64;
+USER2_ETH = (USER1_SHARE / SMOOTHS) * TOTAL_POOL_BALANCE; // 0.5 ETH
+
+USER3_SHARE = (604800 - 86400 * 6) * 32;
+USER3_ETH = (USER1_SHARE / SMOOTHS) * TOTAL_POOL_BALANCE; // 0.0625 ETH
 ```
 
 ## Generalized indices and Merkle Proofs

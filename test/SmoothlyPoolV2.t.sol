@@ -7,7 +7,6 @@ import { Vm } from "forge-std/Vm.sol";
 import { console } from "forge-std/console.sol";
 
 import { SmoothlyPoolV2 } from "../src/SmoothlyPoolV2.sol";
-import { Smooth } from "../src/Smooth.sol";
 import { ISmoothlyPoolV2 } from "../src/interfaces/ISmoothlyPoolV2.sol";
 
 import { SSZ } from "../src/SSZ.sol";
@@ -16,11 +15,9 @@ contract TestSmoothlyPoolV2 is Test, ISmoothlyPoolV2 {
   using stdJson for string;
 
   SmoothlyPoolV2 public pool;
-  Smooth public smooth;
 
   function setUp() public {
     pool = new SmoothlyPoolV2();
-    smooth = Smooth(address(pool.smooth()));
   }
 
   function test_registration() public {
@@ -31,7 +28,7 @@ contract TestSmoothlyPoolV2 is Test, ISmoothlyPoolV2 {
 
     pool.register(400, 32 ether);
 
-    uint256 tSupply = smooth.totalSupply();
+    uint256 tSupply = pool.smooths();
     SmoothlyPoolV2.Registrant memory r = pool.getRegistrant(400);
     vm.warp(8 days);
     pool.rebalance();
