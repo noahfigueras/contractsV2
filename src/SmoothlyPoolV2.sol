@@ -3,18 +3,18 @@ pragma solidity ^0.8.24;
 
 import { ISmoothlyPoolV2 } from "./interfaces/ISmoothlyPoolV2.sol";
 import { BeaconOracle } from "./BeaconOracle.sol";
-import { Smooth } from "./Smooth.sol";
 import { SSZ } from "./SSZ.sol";
 import { console } from "forge-std/console.sol";
 
 contract SmoothlyPoolV2 is ISmoothlyPoolV2 {
   uint32 public constant REBALANCE_PERIOD = 7 days;
+  uint32 public constant BPS = 10000;
 
   uint256 public lastRebalance; 
   uint256 public totalEB;
+  uint256 public smooths;
 
   BeaconOracle public oracle;
-  Smooth public smooth;
 
   struct Registrant {
     uint256 claimable;
@@ -27,7 +27,6 @@ contract SmoothlyPoolV2 is ISmoothlyPoolV2 {
 
   constructor() {
     oracle = new BeaconOracle();
-    smooth = new Smooth();
     lastRebalance = block.timestamp;
   }
 
@@ -45,7 +44,7 @@ contract SmoothlyPoolV2 is ISmoothlyPoolV2 {
     registrants[validatorIndex].verified = false; 
     totalEB += effectiveBalance;
 
-    smooth.mint(_allocateSmooth(effectiveBalance, time));
+    smooths += _allocateSmooth(effectiveBalance, time);
     emit Registered(validatorIndex, effectiveBalance, withdrawal);
   }
 
@@ -56,22 +55,35 @@ contract SmoothlyPoolV2 is ISmoothlyPoolV2 {
     (address withdrawal, uint256 value, uint256 share) = calculateEth(registrant);
     (bool sent, ) = withdrawal.call{ value: value }("");
     require(sent, "Failed to send ether");
-    smooth.burn(share);
+    smooths -= share;
+    registrant.claimable = lastRebalance;
+  }
+
+  /// @dev gets registrant by validator index
+  function getRegistrant(uint64 validatorIndex) external view returns (Registrant memory){
+    return registrants[validatorIndex];
   }
 
   /// @dev calculate share in 'eth' 
   function calculateEth(Registrant memory registrant) 
-    public returns (address withdrawal, uint256 eth, uint256 share) {
+    public view returns (address withdrawal, uint256 eth, uint256 share) {
     if(registrant.claimable > lastRebalance) { revert WithdrawalsDisabled(); }
     share = (lastRebalance - registrant.claimable) * registrant.effectiveBalance;
-    eth = (share / smooth.totalSupply()) * address(this).balance; 
+    eth = ((share * BPS / smooths) * address(this).balance) / BPS;
     withdrawal = registrant.withdrawal;
-    registrant.claimable = block.timestamp;
   }
 
-  /// @dev gets registrant by validator index
-  function getRegistrant(uint64 validatorIndex) public view returns (Registrant memory){
-    return registrants[validatorIndex];
+  /// @dev restarts rebalance period
+  function rebalance() public {
+    uint256 t = block.timestamp;
+    uint256 ellapsed = t - lastRebalance;
+    if(ellapsed > REBALANCE_PERIOD) {
+      uint256 extra = ellapsed - REBALANCE_PERIOD; 
+      smooths += totalEB * extra;
+      lastRebalance = t;
+    } else {
+      revert TimelockNotReached();
+    }
   }
 
   /// @dev calculate share of current rebalance period
@@ -83,12 +95,6 @@ contract SmoothlyPoolV2 is ISmoothlyPoolV2 {
       rebalance();
     }
     return (REBALANCE_PERIOD - ellapsed) * effectiveBalance;
-  }
-
-  /// @dev restarts rebalance period
-  function rebalance() public {
-    totalEB *= REBALANCE_PERIOD;
-    lastRebalance = block.timestamp;
   }
 
 }

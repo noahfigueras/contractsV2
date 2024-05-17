@@ -9,4 +9,5 @@ interface ISmoothlyPoolV2 {
   );
   error Unverified();
   error WithdrawalsDisabled();
+  error TimelockNotReached();
 }
