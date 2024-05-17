@@ -10,6 +10,7 @@ import { BeaconOracle } from "../src/BeaconOracle.sol";
 import { IBeaconOracle } from "../src/interfaces/IBeaconOracle.sol";
 
 import { SSZ } from "../src/SSZ.sol";
+import { Merkle } from "../src/Merkle.sol";
 
 contract TestBeaconOracle is Test, IBeaconOracle {
   using stdJson for string;
@@ -76,60 +77,55 @@ contract TestBeaconOracle is Test, IBeaconOracle {
     );
   }
 
-  /*
   function test_RegistrationMainnet_InvalidProof() public {
     vm.selectFork(fork);
     vm.rollFork(19688741); // One over 19683121 (verifying block)
-    pool = new SmoothlyPoolV2();
+    oracle = new BeaconOracle();
 
     vm.prank(address(0xbe2C1805CcD7f4Ae97457A6C90dfDD5542364A09));
     vm.expectRevert(InvalidIndex.selector);
-    pool.register(
+    oracle.verifyValidator(
       registrationProof.validatorProof,
       registrationProof.validator,
       100,
-      registrationProof.validatorIndex,
       registrationProof.timestamp
     );
   }
 
   function test_RegistrationMainnet_NoHistoryRoot() public {
     vm.selectFork(fork);
-    pool = new SmoothlyPoolV2();
+    oracle = new BeaconOracle();
     vm.prank(address(0xbe2C1805CcD7f4Ae97457A6C90dfDD5542364A09));
     vm.expectRevert(RootNotFound.selector);
-    pool.register(
+    oracle.verifyValidator(
       registrationProof.validatorProof,
       registrationProof.validator,
       registrationProof.gIndex,
-      registrationProof.validatorIndex,
-      registrationProof.timestamp
+      1000000 
     );
   }
 
   function test_RegistrationMainnet() public {
     vm.selectFork(fork);
     vm.rollFork(19688741); // One over 19683121 (verifying block)
-    pool = new SmoothlyPoolV2();
+    oracle = new BeaconOracle();
     vm.prank(address(0xbe2C1805CcD7f4Ae97457A6C90dfDD5542364A09));
-    pool.register(
+    oracle.verifyValidator(
       registrationProof.validatorProof,
       registrationProof.validator,
       registrationProof.gIndex,
-      registrationProof.validatorIndex,
       registrationProof.timestamp
     );
   }
 
   function test_isActiveValidator() public {
-    pool = new SmoothlyPoolV2();
-    assertEq(true, pool.isActiveValidator(registrationProof.validator));
+    oracle = new BeaconOracle();
+    assertEq(true, oracle.isActiveValidator(registrationProof.validator));
   }
 
   function test_isActiveValidator_Inactive() public {
-    pool = new SmoothlyPoolV2();
+    oracle = new BeaconOracle();
     // TODO: Test exited validator 197823
     //assertEq(false, pool.isActiveValidator(v));
   }
-  */
 }
