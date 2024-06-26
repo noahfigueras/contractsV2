@@ -18,7 +18,7 @@ contract SmoothlyPoolV2 is ISmoothlyPoolV2 {
 
   struct Registrant {
     uint256 claimable;
-    uint256 effectiveBalance;
+    uint64 effectiveBalance;
     address withdrawal;
     bool verified;
   }
@@ -34,18 +34,26 @@ contract SmoothlyPoolV2 is ISmoothlyPoolV2 {
   }
 
   /// @dev register validator 
-  function register(uint64 validatorIndex, uint256 effectiveBalance) external {
+  function register(
+    uint64 validatorIndex,
+    bytes32[] calldata validatorProof,
+    SSZ.Validator calldata validator,
+    uint256 gIndex,
+    uint64 ts
+  ) external {
     uint256 time = block.timestamp;
     address withdrawal = msg.sender;
 
+    oracle.verifyValidator(validatorProof, validator, gIndex, ts, withdrawal); // Should revert in case it's invalid
+
     registrants[validatorIndex].withdrawal = withdrawal; 
     registrants[validatorIndex].claimable = time; 
-    registrants[validatorIndex].effectiveBalance = effectiveBalance; 
-    registrants[validatorIndex].verified = false; 
-    totalEB += effectiveBalance;
+    registrants[validatorIndex].effectiveBalance = validator.effectiveBalance; 
+    registrants[validatorIndex].verified = false; // This will disappear
+    totalEB += validator.effectiveBalance;
 
-    smooths += _allocateSmooth(effectiveBalance, time);
-    emit Registered(validatorIndex, effectiveBalance, withdrawal);
+    smooths += _allocateSmooth(uint256(validator.effectiveBalance), time);
+    emit Registered(validatorIndex, validator.effectiveBalance, withdrawal);
   }
 
   /// @dev Only possible to withdraw up to 'lastRebalance'
@@ -94,7 +102,7 @@ contract SmoothlyPoolV2 is ISmoothlyPoolV2 {
       ellapsed = ellapsed - REBALANCE_PERIOD;
       rebalance();
     }
-    return (REBALANCE_PERIOD - ellapsed) * effectiveBalance;
+    share = uint256(effectiveBalance) * uint64(REBALANCE_PERIOD - ellapsed);
   }
 
 }

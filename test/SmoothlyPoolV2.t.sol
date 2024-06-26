@@ -14,22 +14,50 @@ import { SSZ } from "../src/SSZ.sol";
 contract TestSmoothlyPoolV2 is Test, ISmoothlyPoolV2 {
   using stdJson for string;
 
+  string FORK_URL = vm.envString("MAINNET_FORK");
+  uint256 fork;
+
+  struct registrationProofJSON {
+    bytes32[] validatorProof;
+    SSZ.Validator validator;
+    uint64 validatorIndex;
+    bytes32 blockRoot;
+    uint256 gIndex;
+    uint64 timestamp;
+  }
+
+  registrationProofJSON public registrationProof;
+
   SmoothlyPoolV2 public pool;
 
   function setUp() public {
     pool = new SmoothlyPoolV2();
+    string memory root = vm.projectRoot();
+    string memory path = string.concat(root, "/test/fixtures/validator_registration.json");
+    string memory json = vm.readFile(path);
+    bytes memory data = json.parseRaw("$");
+    registrationProof = abi.decode(data, (registrationProofJSON));
+    fork = vm.createSelectFork(FORK_URL);
   }
 
   function test_registration() public {
-    vm.startPrank(msg.sender);
+    vm.selectFork(fork);
+    vm.rollFork(19688741); // One over 19683121 (verifying block)
     // Full share with 32 tokens
     uint256 share = 19353600 ether;
     address(pool).call{value: 1 ether}("");
-
-    pool.register(400, 32 ether);
+    uint64 vIndex = 465789;
+    vm.prank(address(0xbe2C1805CcD7f4Ae97457A6C90dfDD5542364A09));
+    pool.register(
+      vIndex, 
+      registrationProof.validatorProof,
+      registrationProof.validator,
+      registrationProof.gIndex,
+      registrationProof.timestamp
+    );
 
     uint256 tSupply = pool.smooths();
-    SmoothlyPoolV2.Registrant memory r = pool.getRegistrant(400);
+    SmoothlyPoolV2.Registrant memory r = pool.getRegistrant(vIndex);
     vm.warp(8 days);
     pool.rebalance();
     (, uint256 eth, ) = pool.calculateEth(r);

@@ -73,7 +73,8 @@ contract TestBeaconOracle is Test, IBeaconOracle {
       registrationProof.validatorProof,
       registrationProof.validator,
       registrationProof.gIndex,
-      registrationProof.timestamp
+      registrationProof.timestamp,
+      msg.sender
     );
   }
 
@@ -88,7 +89,8 @@ contract TestBeaconOracle is Test, IBeaconOracle {
       registrationProof.validatorProof,
       registrationProof.validator,
       100,
-      registrationProof.timestamp
+      registrationProof.timestamp,
+      msg.sender
     );
   }
 
@@ -101,7 +103,8 @@ contract TestBeaconOracle is Test, IBeaconOracle {
       registrationProof.validatorProof,
       registrationProof.validator,
       registrationProof.gIndex,
-      1000000 
+      1000000,
+      msg.sender
     );
   }
 
@@ -114,7 +117,8 @@ contract TestBeaconOracle is Test, IBeaconOracle {
       registrationProof.validatorProof,
       registrationProof.validator,
       registrationProof.gIndex,
-      registrationProof.timestamp
+      registrationProof.timestamp,
+      msg.sender
     );
   }
 

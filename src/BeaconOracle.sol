@@ -14,7 +14,8 @@ contract BeaconOracle is IBeaconOracle {
     bytes32[] calldata validatorProof,
     SSZ.Validator calldata validator,
     uint256 gIndex,
-    uint64 ts
+    uint64 ts,
+    address sender
   ) public view returns(bool) {
     bytes32 validatorRoot = SSZ.validatorHashTreeRoot(validator);
     bytes32 blockRoot = getParentBlockRoot(ts);
@@ -22,10 +23,19 @@ contract BeaconOracle is IBeaconOracle {
 
     bytes32 root = calculate_merkle_root(validatorProof, validatorRoot, gIndex);
     if(root != blockRoot) revert InvalidProof();
-    if(caller != msg.sender) revert UnauthorizedCaller();
+    if(caller != sender) revert UnauthorizedCaller();
     if(!isActiveValidator(validator)) revert InactiveValidator();
     
     return true;  
+  }
+
+  /// @dev Deactivates a validator due to a change in his FEE_RECIPIENT. 
+  function slashValidatorFR(
+    bytes32[] calldata proof,
+    address pool,
+    uint256 validatorIndex
+  ) external view {
+    // TODO
   }
 
   /// @dev eip-4788 precompile contract 

@@ -23,6 +23,22 @@ with more power having more than `32 ETH`. Therefore a validator with `64 ETH`
 should get a bigger share of rewards than a validator with `32 ETH`. Also, we are 
 going to introduce a **pro-rata share distribution** in this system. 
 
+## Steps 
+1. User proofs that he's the owner of the validator. -> Registration 
+
+2. Validator can claim rewards only when a block is proposed. The rewards will be 
+calculated using a pro-rata share distribution using time and EB (staking power). 
+Time starts from day of registration and resets every time validator claims rewards. 
+
+3. Slashing of deactivation happens through a fraud proof, proving that a specific
+validator has proposed a block with an incorrect `fee_recipient`. This gives 20%
+of the rewards to the observer submitting the fraud proof. The rest goes back to 
+the pool. 
+
+Note: Not sure if we should add Missed Proposals into the slashing scenario. Every
+second missed slot they lose rewards ?? 
+
+
 ## Requirements 
 In order to verify some beacon state, we have to  submit a proof of the beacon 
 state with the information we need to verify. 
@@ -54,7 +70,6 @@ def is_active_validator(validator: Validator, epoch: Epoch) -> bool:
     return validator.activation_epoch <= epoch < validator.exit_epoch
 ```
 
-Problem 1 **->** Someone can pass a proof of the state of a validator that is
 valid and active. But how do we verify that the caller is the owner? 
 
 1. We can do that through the withdrawals credentials. But then, the caller has
@@ -64,14 +79,18 @@ to have changed their withdrawals credentials to an eth1 address.
 the withdrawal address(eigen  pod) and verify the owner of that contract with 
 `EigenPodManager.sol::hasPodg.sender)`
 
-
 ## Slashing mechanism
 Submitting fraud proofs is an idea for slashing someone that is missing slots or 
 changing `fee_recipient`.
 
-TODO
+We can only verify a change of `fee_recipient` if the validator proposes a block
+with the incorrect `fee_recipient` (one that is not the pool's address). This 
+can be verified sending a proof. 
+
+
 
 ## Calculate rewards 
+
 In order to calculate rewards using a pro-rata based distribution, we need to 
 keep track of the time a user is been actively participating in the pool and 
 allocate him rewards based on timestamp and the EB provided by his validator. 

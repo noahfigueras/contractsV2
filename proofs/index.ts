@@ -18,13 +18,28 @@ import {digest, digest64, SHA256} from "@chainsafe/as-sha256";
 
 const BeaconState = ssz.deneb.BeaconState;
 const BeaconBlock = ssz.deneb.BeaconBlock;
+const beaconNodeUrl = 'http://testing.mainnet.beacon-api.nimbus.team';
+const client = getClient(
+  { baseUrl: beaconNodeUrl, timeoutMs: 60_000 },
+  { config }
+);
 
+async function fee_recipient_proof(slot = '9381273') {
+  
+  // Query Beacon slot
+  let res;
+  res = await client.beacon.getBlockV2(slot);
+  if(!res.ok) { throw res.error }
+
+  const blockView = BeaconBlock.toView(res.response.data.message);
+  const gIndexFR = blockView.type.getPathInfo(['body', 'execution_payload', 'fee_recipient']);
+  console.log(gIndexFR);
+
+  console.log(blockView.hashTreeRoot());
+}
+
+fee_recipient_proof();
 async function main(slot = '8891391', validatorIndex = 465789) {
-  const beaconNodeUrl = 'http://testing.mainnet.beacon-api.nimbus.team';
-  const client = getClient(
-    { baseUrl: beaconNodeUrl, timeoutMs: 60_000 },
-    { config }
-  );
 
   let res;
   res = await client.debug.getStateV2(slot, 'ssz');
@@ -48,6 +63,9 @@ async function main(slot = '8891391', validatorIndex = 465789) {
   ]);
 
   const p = createProof(tree.rootNode, { type: ProofType.single, gindex: gI });
+  console.log(
+    stateView.type.getPathInfo(['validators', validatorIndex])
+  )
 
   // Since EIP-4788 stores parentRoot, we have to find the descendant block of
   // the block from the state.
@@ -72,4 +90,4 @@ async function main(slot = '8891391', validatorIndex = 465789) {
 
   console.log(JSON.stringify(data));
 }
-main();
+//main();
