@@ -1,0 +1,11 @@
+[package]
+name = "observer"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ssz_rs = { git="https://github.com/ralexstokes/ssz-rs.git", features=["serde"]} 
+tokio = { version="1.37.0", features=["full"]}
+serde_json = "1.0.120"
+serde = { version = "1.0.204", features = ["derive"] }
+hex = "0.4.3"
