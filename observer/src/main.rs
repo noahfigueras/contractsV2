@@ -19,8 +19,9 @@ async fn main() {
     let block_body: BeaconBlockBody = BeaconBlockBody::from_json(&json2);
 
     let (proof, witness) = block_header.prove(&["slot".into()]).unwrap();
-    dbg!(witness, proof);
+    //dbg!(witness, proof);
 
+    dbg!(block_body);
 }
 
 /*
