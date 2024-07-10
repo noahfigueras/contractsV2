@@ -90,7 +90,7 @@ impl Eth1Data {
         Eth1Data {
             deposit_root: Root::from_string(&object["deposit_root"]),
             deposit_count: object["deposit_count"].as_str().unwrap().parse().unwrap(),
-            block_hash: Root::from_string(&object["deposit_count"]),
+            block_hash: Root::from_string(&object["block_hash"]),
         }
     }
 }
@@ -140,9 +140,9 @@ pub struct Attestation {
 
 impl Attestation {
     pub fn from_json(object: &Value) -> Attestation {
-        let bits: Bits = Bits::from_string(&object["aggregation_bits"]);
+        let bytes = Vec::<u8>::from_string(&object["aggregation_bits"]);
         Attestation {
-            aggregation_bits: Bitlist::<MAX_VALIDATORS_PER_COMMITTEE>::try_from(bits.as_slice())
+            aggregation_bits: Bitlist::<MAX_VALIDATORS_PER_COMMITTEE>::try_from(bytes.as_slice())
                 .unwrap(),
             data: AttestationData::from_json(&object["data"]),
             signature: BLSSignature::from_string(&object["signature"]),
@@ -226,7 +226,7 @@ impl SyncAggregate {
     pub fn from_json(object: &Value) -> SyncAggregate {
         SyncAggregate {
             sync_committee_bits: Bitvector::<SYNC_COMMITTEE_SIZE>::try_from(
-                Bits::from_string(&object["sync_committee_bits"]).as_slice(),
+                Vec::<u8>::from_string(&object["sync_committee_bits"]).as_slice(),
             )
             .unwrap(),
             sync_committee_signature: BLSSignature::from_string(
@@ -377,11 +377,11 @@ pub struct BeaconBlockBody {
 impl BeaconBlockBody {
     pub fn from_json(object: &Value) -> BeaconBlockBody {
         BeaconBlockBody {
-            randao_reveal: BLSSignature::from_string(&object["body"]["randao_reveal"]),
-            eth1_data: Eth1Data::from_json(&object["body"]["eth1_data"]),
-            graffiti: Root::from_string(&object["body"]["graffiti"]),
+            randao_reveal: BLSSignature::from_string(&object["randao_reveal"]),
+            eth1_data: Eth1Data::from_json(&object["eth1_data"]),
+            graffiti: Root::from_string(&object["graffiti"]),
             proposer_slashings: List::<ProposerSlashings, MAX_PROPOSER_SLASHINGS>::try_from(
-                object["body"]["proposer_slashings"]
+                object["proposer_slashings"]
                     .as_array()
                     .unwrap()
                     .iter()
@@ -390,7 +390,7 @@ impl BeaconBlockBody {
             )
             .unwrap(),
             attester_slashings: List::<AttesterSlashings, MAX_ATTESTER_SLASHINGS>::try_from(
-                object["body"]["attester_slashings"]
+                object["attester_slashings"]
                     .as_array()
                     .unwrap()
                     .iter()
@@ -399,7 +399,7 @@ impl BeaconBlockBody {
             )
             .unwrap(),
             attestations: List::<Attestation, MAX_ATTESTATIONS>::try_from(
-                object["body"]["attestations"]
+                object["attestations"]
                     .as_array()
                     .unwrap()
                     .iter()
@@ -408,7 +408,7 @@ impl BeaconBlockBody {
             )
             .unwrap(),
             deposits: List::<Deposit, MAX_DEPOSITS>::try_from(
-                object["body"]["deposits"]
+                object["deposits"]
                     .as_array()
                     .unwrap()
                     .iter()
@@ -417,7 +417,7 @@ impl BeaconBlockBody {
             )
             .unwrap(),
             voluntary_exits: List::<SignedVoluntaryExit, MAX_VOLUNTARY_EXITS>::try_from(
-                object["body"]["voluntary_exits"]
+                object["voluntary_exits"]
                     .as_array()
                     .unwrap()
                     .iter()
@@ -425,13 +425,13 @@ impl BeaconBlockBody {
                     .collect::<Vec<SignedVoluntaryExit>>(),
             )
             .unwrap(),
-            sync_aggregate: SyncAggregate::from_json(&object["body"]["sync_aggregate"]),
-            execution_payload: ExecutionPayload::from_json(&object["body"]["execution_payload"]),
+            sync_aggregate: SyncAggregate::from_json(&object["sync_aggregate"]),
+            execution_payload: ExecutionPayload::from_json(&object["execution_payload"]),
             bls_to_execution_changes: List::<
                 SignedBLSToExecutionChange,
                 MAX_BLS_TO_EXECUTION_CHANGES,
             >::try_from(
-                object["body"]["bls_to_execution_changes"]
+                object["bls_to_execution_changes"]
                     .as_array()
                     .unwrap()
                     .iter()
@@ -440,7 +440,7 @@ impl BeaconBlockBody {
             )
             .unwrap(),
             blob_kzg_commitments: List::<KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK>::try_from(
-                object["body"]["blob_kzg_commitments"]
+                object["blob_kzg_commitments"]
                     .as_array()
                     .unwrap()
                     .iter()
