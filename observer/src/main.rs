@@ -1,5 +1,5 @@
 pub mod consensus_types;
-use consensus_types::{ BeaconBlockHeader, BeaconBlockBody, BeaconBlock };
+use consensus_types::{ BeaconBlockHeader, BeaconBlockBody, BeaconBlock, KZGCommitment };
 use ssz_rs::prelude::*;
 use serde_json::{ from_str, Value };
 use std::fs;
@@ -36,9 +36,9 @@ async fn main() {
     dbg!(block.body.execution_payload.hash_tree_root());
     dbg!(block.body.bls_to_execution_changes.hash_tree_root());
     dbg!(block.body.blob_kzg_commitments.hash_tree_root());
-    dbg!(&block.body.blob_kzg_commitments.chunks());
-    dbg!(&block.body.blob_kzg_commitments.len());
+
 }
+
 
 /*
  let leaves = [1,2,3,4, a: [b,c,d]];

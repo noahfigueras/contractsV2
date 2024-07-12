@@ -24,7 +24,7 @@ type Bytes32 = [u8; 32];
 type Root = Bytes32;
 type Hash32 = Bytes32;
 type BLSPubkey = [u8; 48];
-type KZGCommitment = [u8; 48];
+pub type KZGCommitment = Vector<u8, 48>;
 type BLSSignature = [u8; 96];
 type CommitteeIndex = u64;
 type Epoch = u64;
@@ -444,8 +444,8 @@ impl BeaconBlockBody {
                     .as_array()
                     .unwrap()
                     .iter()
-                    .map(|x| BLSPubkey::from_string(x))
-                    .collect::<Vec<BLSPubkey>>(),
+                    .map(|x| KZGCommitment::from_string(x))
+                    .collect::<Vec<KZGCommitment>>(),
             )
             .unwrap(),
         }
@@ -500,6 +500,15 @@ trait HexToBytes {
 
 impl HexToBytes for Root {
     fn from_string(value: &Value) -> Root {
+        hex::decode(value.as_str().unwrap().get(2..).unwrap())
+            .unwrap()
+            .try_into()
+            .unwrap()
+    }
+}
+
+impl HexToBytes for KZGCommitment {
+    fn from_string(value: &Value) -> KZGCommitment {
         hex::decode(value.as_str().unwrap().get(2..).unwrap())
             .unwrap()
             .try_into()
