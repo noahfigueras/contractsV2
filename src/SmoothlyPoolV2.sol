@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import { ISmoothlyPoolV2 } from "./interfaces/ISmoothlyPoolV2.sol";
 import { BeaconOracle } from "./BeaconOracle.sol";
-import { SSZ } from "./SSZ.sol";
+import { SSZ } from "./libraries/SSZ.sol";
 import { console } from "forge-std/console.sol";
 
 contract SmoothlyPoolV2 is ISmoothlyPoolV2 {

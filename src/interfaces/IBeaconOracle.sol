@@ -7,4 +7,5 @@ interface IBeaconOracle {
   error InvalidIndex();
   error InactiveValidator();
   error UnauthorizedCaller();
+  error LengthMismatch();
 }

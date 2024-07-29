@@ -9,8 +9,8 @@ import { console } from "forge-std/console.sol";
 import { BeaconOracle } from "../src/BeaconOracle.sol";
 import { IBeaconOracle } from "../src/interfaces/IBeaconOracle.sol";
 
-import { SSZ } from "../src/SSZ.sol";
-import { Merkle } from "../src/Merkle.sol";
+import { SSZ } from "../src/libraries/SSZ.sol";
+import { Merkle } from "../src/libraries/Merkle.sol";
 
 contract TestBeaconOracle is Test, IBeaconOracle {
   using stdJson for string;
@@ -20,6 +20,14 @@ contract TestBeaconOracle is Test, IBeaconOracle {
 
   BeaconOracle public oracle;
 
+  struct feeRecipientProofJSON {
+    bytes32[] proof;
+    uint256[] indices;
+    uint64 validatorIndex;
+    address feeRecipient;
+    uint64 timestamp;
+  }
+
   struct registrationProofJSON {
     bytes32[] validatorProof;
     SSZ.Validator validator;
@@ -28,15 +36,21 @@ contract TestBeaconOracle is Test, IBeaconOracle {
     uint256 gIndex;
     uint64 timestamp;
   }
+
   bytes32[] public proof;
   registrationProofJSON public registrationProof;
+  feeRecipientProofJSON public feeRecipientProof;
 
   function setUp() public {
     string memory root = vm.projectRoot();
     string memory path = string.concat(root, "/test/fixtures/validator_registration.json");
+    string memory path2 = string.concat(root, "/test/fixtures/fee_recipient_slash.json");
     string memory json = vm.readFile(path);
     bytes memory data = json.parseRaw("$");
+    string memory json2 = vm.readFile(path2);
+    bytes memory data2 = json2.parseRaw("$");
     registrationProof = abi.decode(data, (registrationProofJSON));
+    feeRecipientProof = abi.decode(data2, (feeRecipientProofJSON));
     fork = vm.createSelectFork(FORK_URL);
   }
 
@@ -52,8 +66,8 @@ contract TestBeaconOracle is Test, IBeaconOracle {
     ];
 
     bytes32 validatorRoot = SSZ.validatorHashTreeRoot(registrationProof.validator);
-    bytes32 root = oracle.calculate_merkle_root(proof, leaf, 11);
-    bytes32 root2 = oracle.calculate_merkle_root(
+    bytes32 root = Merkle.calculateMerkleRoot(proof, leaf, 11);
+    bytes32 root2 = Merkle.calculateMerkleRoot(
       registrationProof.validatorProof,
       validatorRoot,
       registrationProof.gIndex 

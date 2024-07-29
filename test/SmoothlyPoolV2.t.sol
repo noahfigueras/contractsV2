@@ -9,7 +9,7 @@ import { console } from "forge-std/console.sol";
 import { SmoothlyPoolV2 } from "../src/SmoothlyPoolV2.sol";
 import { ISmoothlyPoolV2 } from "../src/interfaces/ISmoothlyPoolV2.sol";
 
-import { SSZ } from "../src/SSZ.sol";
+import { SSZ } from "../src/libraries/SSZ.sol";
 
 contract TestSmoothlyPoolV2 is Test, ISmoothlyPoolV2 {
   using stdJson for string;
