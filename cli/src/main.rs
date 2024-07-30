@@ -26,7 +26,7 @@ async fn main() {
     // Fetch BeaconState
     let url = "http://unstable.mainnet.beacon-api.nimbus.team";
     let spec = ChainSpec::default();
-    let slot = Slot::new(8891391);
+    let slot = Slot::new(9496284);
     let validator_index = 465789;
     let state = StateId::Slot(slot.clone());
     let timeout = Timeouts::set_all(Duration::from_secs(60*5));
@@ -35,6 +35,25 @@ async fn main() {
         .get_beacon_blocks::<MainnetEthSpec>(BlockId::Slot(slot.clone()))
         .await
         .unwrap().unwrap();
+
+
+    dbg!(block.data.message().body().blob_kzg_commitments().unwrap().tree_hash_root());
+    dbg!(block.data.message().body().blob_kzg_commitments().unwrap().as_ssz_bytes());
+    /*
+    dbg!(block.data.message().tree_hash_root());
+    dbg!(block.data.message().body().randao_reveal().tree_hash_root());
+    dbg!(block.data.message().body().eth1_data().tree_hash_root());
+    dbg!(block.data.message().body().graffiti().tree_hash_root());
+    dbg!(block.data.message().body().proposer_slashings().tree_hash_root());
+    dbg!(block.data.message().body().attester_slashings().tree_hash_root());
+    dbg!(block.data.message().body().attestations().tree_hash_root());
+    dbg!(block.data.message().body().deposits().tree_hash_root());
+    dbg!(block.data.message().body().voluntary_exits().tree_hash_root());
+    dbg!(block.data.message().body().sync_aggregate().unwrap().tree_hash_root());
+    dbg!(block.data.message().body().execution_payload().unwrap().tree_hash_root());
+    dbg!(block.data.message().body().bls_to_execution_changes().unwrap().tree_hash_root());
+    dbg!(block.data.message().body().blob_kzg_commitments().unwrap().tree_hash_root());
+
     let mut state = client
         .get_debug_beacon_states_ssz::<MainnetEthSpec>(state, &spec)
         .await
@@ -100,7 +119,7 @@ async fn main() {
     // Slashing - Prove that validator x has missed a slot.
     // Slashing - Prove that validator x has proposed a block with incorrect fee_recipient.
     // Slashing - Prove that validator x has changed fee_recipient.
-
+    */
 
 }
 

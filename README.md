@@ -1,4 +1,3 @@
-
 # Permissionless MEV Smoothing Pool
 
 I believe it is possible to create a Permissionless MEV Smoothing Pool contract
@@ -31,13 +30,26 @@ calculated using a pro-rata share distribution using time and EB (staking power)
 Time starts from day of registration and resets every time validator claims rewards. 
 
 3. Slashing of deactivation happens through a fraud proof, proving that a specific
-validator has proposed a block with an incorrect `fee_recipient`. This gives 20%
+validator has proposed a block with an incorrect `fee_recipient`. This gives x%
 of the rewards to the observer submitting the fraud proof. The rest goes back to 
-the pool. 
+the pool. Or there's the option to add a bond on registration and use that as a 
+reward for the observer. 
+To proof this we need to submit and verify a merkle-multi-proof. Proving the: 
+`fee_recipient, slot timestamp and validator index` of that specific slot. There's a time 
+barrier regarding the verification of the block as the beacon block root contract
+only gives around 1 day worth of the latest block roots. 
+
+To remove that barrier we'll have to submit a multi-proof concatenating (beaconBlock with beaconState) to retrieve
+a past root hash. beaconBlock -> beaconState -> historicalRoots[beaconBlockRootToProof]
+The issue here is that it takes a while to retrieve the beaconState (2-3 min) to 
+query. Also the proofs take a while as it's a lot of compute. 
 
 Note: Not sure if we should add Missed Proposals into the slashing scenario. Every
 second missed slot they lose rewards ?? 
+* How do I actually prove that a validator missed a slot?
+Exemple: Slot 9312424 was missed by Validator index 692834. 
 
+4. Validator exits pool. Gets rewards and bond back if there is.
 
 ## Requirements 
 In order to verify some beacon state, we have to  submit a proof of the beacon 
