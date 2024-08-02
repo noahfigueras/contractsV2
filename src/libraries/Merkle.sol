@@ -9,8 +9,7 @@ import { Arrays } from "./Arrays.sol";
 library Merkle {
   using Arrays for uint256[];
 
-  error InvalidIndex();
-  error LengthMismatch();
+  error InvalidProof();
 
   /// @dev Calculates merkle root
   function calculateMerkleRoot(
@@ -18,7 +17,7 @@ library Merkle {
     bytes32 leaf,
     uint index
   ) internal pure returns(bytes32) {
-    if(_proof.length != uint64(SSZ.log2(index))) revert InvalidIndex();
+    if(_proof.length != uint64(SSZ.log2(index))) revert InvalidProof();
     for(uint256 i = 0; i < _proof.length; i++) {
       if((index & (1 << i)) > 0) {
         leaf = sha256(abi.encode(_proof[i], leaf));
@@ -31,20 +30,45 @@ library Merkle {
 
   /// @dev Calculates multi-merkle root
   function calculateMultiMerkleRoot(
-    bytes32[] memory _proof, 
+    bytes32[] memory proof, 
     bytes32[] memory leaves, 
     uint256[] memory indices
   ) internal pure returns(bytes32) {
-    if(leaves.length != indices.length) revert LengthMismatch();
+    if(leaves.length != indices.length) revert InvalidProof();
+    uint256[] memory helperIndices = getHelperIndices(indices);
+    if(proof.length != helperIndices.length) revert InvalidProof();
 
-    //uint256[] memory helperIndices = get_helper_indices(indices);
-    return bytes32(0); 
+    uint256[] memory keys = helperIndices.concat(indices).sortReverse();
+    bytes32[] memory objects = new bytes32[](keys[0]);
+    for(uint256 i = 0; i < helperIndices.length; i++) {
+      objects[helperIndices[i]] = proof[i];
+    }
+    for(uint256 i = 0; i < indices.length; i++) {
+      objects[indices[i]] = leaves[i];
+    }
+
+    uint256 pos = 0;
+    while(pos < keys.length) {
+      uint256 k = keys[pos];
+      if(
+        objects[k] > 0 && // Has index
+        objects[k ^ 1] > 0 && // Has Sibling 
+        objects[k / 2] == 0 // No Parent 
+      ) {
+        objects[k / 2] = sha256(abi.encode(objects[(k | 1) ^ 1], objects[k | 1]));
+        keys = keys.push(k / 2);
+      }
+
+      pos += 1;
+    }
+
+    return objects[1]; 
   }
 
   
   /// @dev Get the gIndices of all "extra" chunks in the tree needed to prove the
   /// chunks gIndices.
-  function getHelperIndices(uint256[] memory indices) internal returns(uint256[] memory) {
+  function getHelperIndices(uint256[] memory indices) internal pure returns(uint256[] memory) {
     uint256[] memory allHelperIndices;
     uint256[] memory allPathIndices;
     for(uint256 i = 0; i < indices.length; i++) {
