@@ -4,10 +4,12 @@ pragma solidity ^0.8.24;
 /// As specified in: 
 /// https://github.com/ethereum/consensus-specs/blob/dev/ssz/merkle-proofs.md
 import { SSZ } from "./SSZ.sol";
-import { Arrays } from "./Arrays.sol";
+import { Arrays, HashMap } from "./Arrays.sol";
+import { console } from "forge-std/console.sol";
 
 library Merkle {
   using Arrays for uint256[];
+  using HashMap for uint256;
 
   error InvalidProof();
 
@@ -33,36 +35,34 @@ library Merkle {
     bytes32[] memory proof, 
     bytes32[] memory leaves, 
     uint256[] memory indices
-  ) internal pure returns(bytes32) {
+  ) internal returns(bytes32) {
     if(leaves.length != indices.length) revert InvalidProof();
     uint256[] memory helperIndices = getHelperIndices(indices);
     if(proof.length != helperIndices.length) revert InvalidProof();
 
     uint256[] memory keys = helperIndices.concat(indices).sortReverse();
-    bytes32[] memory objects = new bytes32[](keys[0]);
     for(uint256 i = 0; i < helperIndices.length; i++) {
-      objects[helperIndices[i]] = proof[i];
+      helperIndices[i].set(proof[i]);
     }
     for(uint256 i = 0; i < indices.length; i++) {
-      objects[indices[i]] = leaves[i];
+      indices[i].set(leaves[i]);
     }
 
     uint256 pos = 0;
     while(pos < keys.length) {
       uint256 k = keys[pos];
       if(
-        objects[k] > 0 && // Has index
-        objects[k ^ 1] > 0 && // Has Sibling 
-        objects[k / 2] == 0 // No Parent 
+        k.contains() && // Has index
+        (k ^ 1).contains() && // Has Sibling 
+        !(k / 2).contains() // No Parent 
       ) {
-        objects[k / 2] = sha256(abi.encode(objects[(k | 1) ^ 1], objects[k | 1]));
+        (k / 2).set(sha256(abi.encode(((k | 1) ^ 1).get(), (k | 1).get())));
         keys = keys.push(k / 2);
       }
-
       pos += 1;
     }
 
-    return objects[1]; 
+    return uint256(1).get(); 
   }
 
   

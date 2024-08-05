@@ -21,5 +21,6 @@ async fn main() {
         &["body".into(), "execution_payload".into(), "timestamp".into()]
     ]).unwrap();
 
+    dbg!(&proof);
     assert!(proof.verify(witness).is_ok());
 }

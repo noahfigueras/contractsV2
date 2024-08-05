@@ -6,3 +6,7 @@ edition = "2021"
 [dependencies]
 alloy = { version = "0.2.0", features = ["full", "node-bindings"] }
 tokio = { version = "1.39.2", features = ["full"] }
+ssz_rs = { git="https://github.com/noahfigueras/ssz-rs.git", features=["serde"], branch="multi-proof-generation"} 
+serde_json = "1.0.120"
+hex = "0.4.3"
+

@@ -1,6 +1,37 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.24;
 
+library HashMap {
+  // TODO: Try this with tStore
+
+  /// @dev Sets a value in key slot 
+  function set(uint256 key, bytes32 value) internal {
+    bytes32 _key = keccak256(abi.encode(key));
+    assembly {
+      tstore(_key, value)
+      tstore(add(_key, 32), 1) // Need to flag it as empty leaves are possible
+    }
+  }
+
+  /// @dev Gets a value from key 
+  function get(uint256 key) internal returns(bytes32 value) {
+    bytes32 _key = keccak256(abi.encode(key));
+    assembly {
+      value := tload(_key) 
+    }
+  }
+
+  /// @dev Returns true if key was set 
+  function contains(uint256 key) internal returns(bool value) {
+    bytes32 _key = keccak256(abi.encode(key));
+    assembly {
+      // Return last bit
+      value := tload(add(_key, 32))
+    }
+  }
+
+}
+
 library Arrays {
 
   /// @dev Returns array concatenating all items of arr1 and arr2

@@ -36,7 +36,7 @@ contract BeaconOracle is IBeaconOracle {
     uint256 validatorIndex,
     address feeRecipient,
     uint64 timestamp
-  ) external view returns(bool) {
+  ) external returns(bool) {
     if(indices.length != 3) revert LengthMismatch();
 
     // Encode values to little endians
