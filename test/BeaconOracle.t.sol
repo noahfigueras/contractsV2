@@ -38,6 +38,8 @@ contract TestBeaconOracle is Test, IBeaconOracle {
   }
 
   bytes32[] public proof;
+  uint256[] public indices;
+
   registrationProofJSON public registrationProof;
   feeRecipientProofJSON public feeRecipientProof;
 
@@ -134,6 +136,44 @@ contract TestBeaconOracle is Test, IBeaconOracle {
       registrationProof.timestamp,
       msg.sender
     );
+  }
+
+  function test_FeeRecipientChange() public {
+    // Better tests in integretion-tests
+    uint256 proposer_index = 696862;
+    address feeRecipient = 0x95222290DD7278Aa3Ddd389Cc1E1d165CC4BAfe5; 
+    uint256 timestamp = 1718573123;
+    indices = [
+      9,
+      6433,
+      6441
+    ];
+    proof = [
+      bytes32(hex'b316900100000000000000000000000000000000000000000000000000000000'),
+      bytes32(hex'552f83bef2164ede6e62b9f1c53cde415f057afcafecdd0a69abc6d47a2f4f71'),
+      bytes32(hex'83a5208b589808cf93679e7bbb1e0d668c73995a9b6db86db802aca040d7ed19'),
+      bytes32(hex'82eab58be968f51f0e05a6e2506361146e17fad78cdddda1e7ccb1ede1f8ecfd'),
+      bytes32(hex'd8e4e01c2de60def1ed22fbf69cd77dadd2cddbc0d86644f7041b95a06b1d0c4'),
+      bytes32(hex'91eea28200b4f7e7f39e195e9bfa4406c388b038e7b1d793466f30c783a468d0'),
+      bytes32(hex'5842e447dc6a52c921c292f1c06fbf98fc39e123d0ea592b9fd98759eb01f28f'),
+      bytes32(hex'71a6d6c6e7661c2db605750a399568a4cd7d224bada2f90e4139add65329445f'),
+      bytes32(hex'b46f0c01805fe212e15907981b757e6c496b0cb06664224655613dcec82505bb'),
+      bytes32(hex'db56114e00fdd4c1f85c892bf35ac9a89289aaecb1ebd0a96cde606a748b5d71'),
+      bytes32(hex'5adf3630e082725d52ef90c24257302c20fbfb3c686b9dc9d89fd9eff8d0e345'),
+      bytes32(hex'0000000000000000000000000000000000000000000000000000000000000000'),
+      bytes32(hex'a9188e0000000000000000000000000000000000000000000000000000000000'),
+      bytes32(hex'f5a5fd42d16a20302798ef6ed309979b43003d2320d9f0e8ea9831a92759fb4b'),
+      bytes32(hex'ecaf4123f2be7f1f7b7eacf63997326dbed3ef925959daaaf9ae2c1d911c88ec')
+    ];
+
+    vm.selectFork(fork);
+    vm.rollFork(20107024); // One over 20107023 (verifying block)
+    bytes32 blockRoot = bytes32(0xab5835bed4c54a00490293e9935bccec7b248f5db7f9fe2fbfa34481fe80c916);
+    oracle = new BeaconOracle();
+    assertEq(
+      oracle.verifyFeeRecipient(
+        indices, proof, proposer_index, feeRecipient, uint64(timestamp), uint64(1718573135)
+    ), true);
   }
 
   function test_isActiveValidator() public {
