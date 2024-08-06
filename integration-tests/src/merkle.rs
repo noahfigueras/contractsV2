@@ -25,7 +25,7 @@ sol!(
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_merkle_multi_proofs() {
-    let anvil = Anvil::new().try_spawn().unwrap();
+    let anvil = Anvil::new().fork("https://eth.merkle.io@20107024").try_spawn().unwrap();
 
     let signer: PrivateKeySigner = anvil.keys()[0].clone().into();
     let wallet = EthereumWallet::from(signer);
@@ -34,8 +34,6 @@ async fn test_merkle_multi_proofs() {
     let provider =
         ProviderBuilder::new().with_recommended_fillers().wallet(wallet).on_http(rpc_url);
 
-    let contract =
-        BeaconOracle::deploy(&provider).await.unwrap();
 
     let file = fs::read_to_string("data/block.json").unwrap();
     let json: Value = from_str(file.as_str()).unwrap();
@@ -48,13 +46,18 @@ async fn test_merkle_multi_proofs() {
     ]).unwrap();
     assert!(proof.verify(witness).is_ok());
 
+    let contract = BeaconOracle::deploy(&provider).await.unwrap();
+    println!("Contract deployed at address: {}", contract.address());
+
     let builder = contract.verifyFeeRecipient(
         proof.indices.iter().map(|x| U256::from(*x)).collect(),
         proof.branch,
         U256::from(block.proposer_index),
         Address::from_slice(&block.body.execution_payload.fee_recipient),
         block.body.execution_payload.timestamp,
+        1718573135 as u64
     );
+
     let res = builder.call().await.unwrap()._0;
-    assert_eq!(res, false);
+    assert_eq!(res, true);
 }

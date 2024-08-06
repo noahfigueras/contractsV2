@@ -11,7 +11,7 @@ import { SSZ } from "../src/libraries/SSZ.sol";
 contract TestMerkle is Test {
   using Arrays for uint256[];
   using HashMap for uint256;
-
+  
   bytes32[] public proof;
   bytes32[] public leaves;
   uint256[] public indices;
@@ -19,9 +19,11 @@ contract TestMerkle is Test {
   function test_sszEncodeValues() public {
     uint256 proposer_index = 696862;
     uint256 timestamp = 1718573123;
+    address feeRecipient = 0x95222290DD7278Aa3Ddd389Cc1E1d165CC4BAfe5; 
 
     assertEq(0x1ea20a0000000000000000000000000000000000000000000000000000000000, SSZ.toLittleEndian(proposer_index)); 
     assertEq(0x43586f6600000000000000000000000000000000000000000000000000000000, SSZ.toLittleEndian(timestamp)); 
+    assertEq(0x95222290dd7278aa3ddd389cc1e1d165cc4bafe5000000000000000000000000, bytes32(uint256(uint160(feeRecipient)) << 96));
   }
 
   function test_verifyMultiMerkleRootDebug() public {
@@ -46,7 +48,7 @@ contract TestMerkle is Test {
 
   function test_verifyMultiMerkleRoot() public {
     uint256 proposer_index = 696862;
-    bytes32 fee_recipient = 0x95222290dd7278aa3ddd389cc1e1d165cc4bafe5000000000000000000000000;
+    address feeRecipient = 0x95222290DD7278Aa3Ddd389Cc1E1d165CC4BAfe5; 
     uint256 timestamp = 1718573123;
     indices = [
       9,
@@ -55,7 +57,7 @@ contract TestMerkle is Test {
     ];
     leaves = [
       SSZ.toLittleEndian(proposer_index),
-      fee_recipient,
+      bytes32(uint256(uint160(feeRecipient)) << 96),
       SSZ.toLittleEndian(timestamp)
     ];
     proof = [
