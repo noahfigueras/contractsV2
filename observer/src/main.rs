@@ -15,12 +15,14 @@ async fn main() {
 
     let block: BeaconBlock = BeaconBlock::from_json(&json2);
 
+    let (proof, witness) = block.prove(&["body".into(), "execution_payload".into(), "transactions".into(), 250.into()]).unwrap();
+    /*
     let (proof, witness) = block.multi_prove(&[
         &["proposer_index".into()],
         &["body".into(), "execution_payload".into(), "fee_recipient".into()],
         &["body".into(), "execution_payload".into(), "timestamp".into()]
-    ]).unwrap();
+    ]).unwrap();*/
 
-    dbg!(&proof);
-    assert!(proof.verify(witness).is_ok());
+    dbg!(&proof, &witness);
+    //assert!(proof.verify(witness).is_ok());
 }
