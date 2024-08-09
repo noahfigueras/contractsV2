@@ -9,9 +9,11 @@ import { console } from "forge-std/console.sol";
 contract SmoothlyPoolV2 is ISmoothlyPoolV2 {
   uint32 public constant REBALANCE_PERIOD = 7 days;
   uint32 public constant BPS = 10000;
+  uint64 public constant BOND = 0.1 ether;
 
   uint256 public lastRebalance; 
   uint256 public totalEB;
+  uint256 public totalBond;
   uint256 public smooths;
 
   BeaconOracle public oracle;
@@ -20,10 +22,10 @@ contract SmoothlyPoolV2 is ISmoothlyPoolV2 {
     uint256 claimable;
     uint64 effectiveBalance;
     address withdrawal;
-    bool verified;
+    uint256 bond;
   }
 
-  mapping(uint64 => Registrant) public registrants;
+  mapping(uint256 => Registrant) public registrants;
 
   constructor() {
     oracle = new BeaconOracle();
@@ -40,7 +42,8 @@ contract SmoothlyPoolV2 is ISmoothlyPoolV2 {
     SSZ.Validator calldata validator,
     uint256 gIndex,
     uint64 ts
-  ) external {
+  ) external payable {
+    if(msg.value != BOND) { revert BondTooLow(); }
     uint256 time = block.timestamp;
     address withdrawal = msg.sender;
 
@@ -49,22 +52,43 @@ contract SmoothlyPoolV2 is ISmoothlyPoolV2 {
     registrants[validatorIndex].withdrawal = withdrawal; 
     registrants[validatorIndex].claimable = time; 
     registrants[validatorIndex].effectiveBalance = validator.effectiveBalance; 
-    registrants[validatorIndex].verified = false; // This will disappear
+    registrants[validatorIndex].bond = BOND; 
+
+    totalBond += BOND;
     totalEB += validator.effectiveBalance;
 
-    smooths += _allocateSmooth(uint256(validator.effectiveBalance), time);
+    _allocateSmooth(uint256(validator.effectiveBalance), time);
     emit Registered(validatorIndex, validator.effectiveBalance, withdrawal);
   }
 
   /// @dev Only possible to withdraw up to 'lastRebalance'
-  function withdraw(uint64 validatorIndex) external {
+  function withdraw(
+    uint256[] calldata indices,
+    bytes32[] calldata proof,
+    uint256 validatorIndex,
+    uint64 timestamp,
+    uint64 parentTs
+  ) external {
     Registrant memory registrant = registrants[validatorIndex];
-    if(!registrant.verified) { revert Unverified(); }
-    (address withdrawal, uint256 value, uint256 share) = calculateEth(registrant);
-    (bool sent, ) = withdrawal.call{ value: value }("");
-    require(sent, "Failed to send ether");
+    if(registrant.claimable == 0) { revert Unregistered(); }
+
+    rebalance();
+
+    oracle.verifyFeeRecipient(
+      indices, 
+      proof, 
+      validatorIndex, 
+      address(this), 
+      timestamp, 
+      parentTs
+    );
+
+    (uint256 value, uint256 share) = calculateEth(registrant);
     smooths -= share;
     registrant.claimable = lastRebalance;
+
+    (bool sent, ) = registrant.withdrawal.call{ value: value }("");
+    require(sent, "Failed to send ether");
   }
 
   /// @dev gets registrant by validator index
@@ -74,11 +98,15 @@ contract SmoothlyPoolV2 is ISmoothlyPoolV2 {
 
   /// @dev calculate share in 'eth' 
   function calculateEth(Registrant memory registrant) 
-    public view returns (address withdrawal, uint256 eth, uint256 share) {
+    public view returns (uint256 eth, uint256 share) {
     if(registrant.claimable > lastRebalance) { revert WithdrawalsDisabled(); }
     share = (lastRebalance - registrant.claimable) * registrant.effectiveBalance;
-    eth = ((share * BPS / smooths) * address(this).balance) / BPS;
-    withdrawal = registrant.withdrawal;
+    eth = ((share * BPS / smooths) * totalETH()) / BPS;
+  }
+
+  /// @dev gets total amount of ETH in the pool 
+  function totalETH() internal view returns(uint256) {
+    return address(this).balance - totalBond;
   }
 
   /// @dev restarts rebalance period
@@ -89,20 +117,18 @@ contract SmoothlyPoolV2 is ISmoothlyPoolV2 {
       uint256 extra = ellapsed - REBALANCE_PERIOD; 
       smooths += totalEB * extra;
       lastRebalance = t;
-    } else {
-      revert TimelockNotReached();
-    }
+    }  
   }
 
   /// @dev calculate share of current rebalance period
-  function _allocateSmooth(uint256 effectiveBalance, uint256 timestamp) 
-    internal returns (uint256 share) {
+  function _allocateSmooth(uint256 effectiveBalance, uint256 timestamp) internal {
     uint256 ellapsed = timestamp - lastRebalance;
     if(ellapsed > REBALANCE_PERIOD) {
       ellapsed = ellapsed - REBALANCE_PERIOD;
       rebalance();
+    } else {
+      smooths += uint256(effectiveBalance) * uint64(REBALANCE_PERIOD - ellapsed);
     }
-    share = uint256(effectiveBalance) * uint64(REBALANCE_PERIOD - ellapsed);
   }
 
 }

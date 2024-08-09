@@ -1,8 +1,7 @@
 # Permissionless MEV Smoothing Pool
 
 I believe it is possible to create a Permissionless MEV Smoothing Pool contract
-with the introduction of [eip-4788](https://eips.ethereum.org/EIPS/eip-4788) and 
-[eip4844](https://eips.ethereum.org/EIPS/eip-4844).
+with the introduction of [eip-4788](https://eips.ethereum.org/EIPS/eip-4788).
 
 Eip-4788 allows us, to acess consensus information from the beacon chain through
 the `beacon_block_root`. Thus, enabling us verification of the beacon state in the

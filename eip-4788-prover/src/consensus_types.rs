@@ -494,6 +494,11 @@ impl BeaconBlock {
     }
 }
 
+#[derive(PartialEq, Eq, Debug, SimpleSerialize)]
+pub struct Transaction2 {
+    id: u8,
+}
+
 trait HexToBytes {
     fn from_string(value: &Value) -> Self;
 }
@@ -552,6 +557,13 @@ impl HexToBytes for Transaction {
     }
 }
 
+impl HexToBytes for Transaction2 {
+    fn from_string(value: &Value) -> Transaction2 {
+        let hex = hex::decode(value.as_str().unwrap().get(2..).unwrap()).unwrap();
+        Transaction2 { id: 1 }
+    }
+}
+
 impl HexToBytes for Vec<u8> {
     fn from_string(value: &Value) -> Vec<u8> {
         hex::decode(value.as_str().unwrap().get(2..).unwrap())
@@ -601,6 +613,14 @@ mod tests {
         let v: Value = serde_json::from_str(data).unwrap();
 
         let res = BLSSignature::from_string(&v["randao_reveal"]);
+
+        assert_ne!(Some(res), None);
+    }
+
+    #[test]
+    fn it_decodes_transaction() {
+        // leaf -> 0x22f560a3e653dfd45dc7693214b5788f3838c87043819e33903828faa4b62c40
+        let res = Transaction2::from_string("0x02f8d301830bd698839c118f8501356d9f8983015f90940fac79e4e1346f160037e76a5238fee2617a4d3180b864c8fea2fb000000000000000000000000e03c23519e18d64f144d2800e30e81b0065c48b50000000000000000000000000f5d2fb29fb7d3cfee444a200298f468908cc9420000000000000000000000000000000000000000000000049a2413365a030000c001a0afdcb150943ba80d508daab4675dbc9a1494b73c7f71edbdaec222857edad428a04a5b044cbf841d474a0064787b3b22d6792b63ddc95793f8e5f3243bd5b2bb75");
 
         assert_ne!(Some(res), None);
     }

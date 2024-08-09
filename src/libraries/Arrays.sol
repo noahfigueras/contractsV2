@@ -14,7 +14,7 @@ library HashMap {
   }
 
   /// @dev Gets a value from key 
-  function get(uint256 key) internal returns(bytes32 value) {
+  function get(uint256 key) internal view returns(bytes32 value) {
     bytes32 _key = keccak256(abi.encode(key));
     assembly {
       value := tload(_key) 
@@ -22,7 +22,7 @@ library HashMap {
   }
 
   /// @dev Returns true if key was set 
-  function contains(uint256 key) internal returns(bool value) {
+  function contains(uint256 key) internal view returns(bool value) {
     bytes32 _key = keccak256(abi.encode(key));
     assembly {
       // Return last bit

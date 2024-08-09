@@ -10,6 +10,7 @@ contract BeaconOracle is IBeaconOracle {
   uint32 public constant BLOCK_TO_SLOT_DIFF = 10797349; // Mainnet
   address public constant BEACON_ROOTS = 0x000F3df6D732807Ef1319fB7B8bB8522d0Beac02;
 
+  /// @dev Proof that a validator is owned 
   function verifyValidator(
     bytes32[] calldata validatorProof,
     SSZ.Validator calldata validator,
@@ -36,6 +37,7 @@ contract BeaconOracle is IBeaconOracle {
     uint256 validatorIndex,
     address feeRecipient,
     uint64 timestamp,
+    uint64 parentTs
   ) external returns(bool) {
     if(indices.length != 3) revert LengthMismatch();
 
@@ -46,12 +48,9 @@ contract BeaconOracle is IBeaconOracle {
     leaves[2] = SSZ.toLittleEndian(timestamp);
 
     // Calculate root - If verifies, we can use the values
-    bytes32 blockRoot = getParentBlockRoot(timestamp);
+    bytes32 blockRoot = getParentBlockRoot(parentTs);
     bytes32 root = Merkle.calculateMultiMerkleRoot(proof, leaves, indices);
     if(root != blockRoot) revert InvalidProof();
-    if(msg.sender != feeRecipient) {
-      return false;
-    }
 
     return true;
   }
