@@ -7,8 +7,13 @@ interface ISmoothlyPoolV2 {
     uint256 effectiveBalance,
     address withdrawal
   );
+  event Received(
+    address indexed sender,
+    uint256 value
+  );
   error Unregistered();
   error WithdrawalsDisabled();
   error TimelockNotReached();
   error BondTooLow();
+  error InvalidBlockTimestamp();
 }
