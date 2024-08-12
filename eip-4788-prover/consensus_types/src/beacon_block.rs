@@ -18,20 +18,20 @@ const MAX_BLS_TO_EXECUTION_CHANGES: usize = 16;
 const MAX_TRANSACTIONS_PER_PAYLOAD: usize = 1048576;
 const MAX_WITHDRAWALS_PER_PAYLOAD: usize = 16;
 
-type Bits = Vec<bool>;
-type ExecutionAddress = [u8; 20];
-type Bytes32 = [u8; 32];
-type Root = Bytes32;
-type Hash32 = Bytes32;
-type BLSPubkey = [u8; 48];
+pub type Bits = Vec<bool>;
+pub type ExecutionAddress = [u8; 20];
+pub type Bytes32 = [u8; 32];
+pub type Root = Bytes32;
+pub type Hash32 = Bytes32;
+pub type BLSPubkey = [u8; 48];
 pub type KZGCommitment = Vector<u8, 48>;
-type BLSSignature = [u8; 96];
-type CommitteeIndex = u64;
-type Epoch = u64;
-type ValidatorIndex = u64;
-type WithdrawalIndex = u64;
-type Gwei = u64;
-type Transaction = List<u8, MAX_BYTES_PER_TRANSACTION>;
+pub type BLSSignature = [u8; 96];
+pub type CommitteeIndex = u64;
+pub type Epoch = u64;
+pub type ValidatorIndex = u64;
+pub type WithdrawalIndex = u64;
+pub type Gwei = u64;
+pub type Transaction = List<u8, MAX_BYTES_PER_TRANSACTION>;
 
 #[derive(PartialEq, Eq, Debug, SimpleSerialize)]
 pub struct SignedBeaconBlockHeader {
@@ -499,7 +499,7 @@ pub struct Transaction2 {
     id: u8,
 }
 
-trait HexToBytes {
+pub trait HexToBytes {
     fn from_string(value: &Value) -> Self;
 }
 
