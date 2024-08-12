@@ -1,5 +1,4 @@
-pub mod consensus_types;
-use consensus_types::BeaconBlock;
+use consensus_types::beacon_block::BeaconBlock;
 use ssz_rs::prelude::*;
 use serde_json::{ from_str, Value };
 use std::fs;
@@ -9,7 +8,7 @@ async fn main() {
     // Fetch BeaconState
     //let url = "http://unstable.mainnet.beacon-api.nimbus.team/eth/v2/beacon/blocks/9312425";
     // Load from File
-    let file2 = fs::read_to_string("block.json").unwrap();
+    let file2 = fs::read_to_string("data/block.json").unwrap();
 
     let json2: Value = from_str(file2.as_str()).unwrap();
 
