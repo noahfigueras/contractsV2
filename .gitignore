@@ -15,3 +15,6 @@ docs/
 # Builds
 */target
 */node_modules
+
+# Data
+/eip-4788-prover/data

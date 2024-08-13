@@ -1,37 +1,6 @@
-use hex;
+use crate::types::*;
 use serde_json::Value;
 use ssz_rs::prelude::*;
-
-const MAX_PROPOSER_SLASHINGS: usize = 16;
-const MAX_ATTESTER_SLASHINGS: usize = 2;
-const MAX_ATTESTATIONS: usize = 128;
-const MAX_DEPOSITS: usize = 16;
-const MAX_VOLUNTARY_EXITS: usize = 16;
-const MAX_VALIDATORS_PER_COMMITTEE: usize = 2048;
-//const DEPOSIT_CONTRACT_TREE_DEPTH: usize = 32;
-const SYNC_COMMITTEE_SIZE: usize = 512;
-const BYTES_PER_LOGS_BLOOM: usize = 256;
-const MAX_EXTRA_DATA_BYTES: usize = 32;
-const MAX_BYTES_PER_TRANSACTION: usize = 1073741824;
-const MAX_BLOB_COMMITMENTS_PER_BLOCK: usize = 4096;
-const MAX_BLS_TO_EXECUTION_CHANGES: usize = 16;
-const MAX_TRANSACTIONS_PER_PAYLOAD: usize = 1048576;
-const MAX_WITHDRAWALS_PER_PAYLOAD: usize = 16;
-
-pub type Bits = Vec<bool>;
-pub type ExecutionAddress = [u8; 20];
-pub type Bytes32 = [u8; 32];
-pub type Root = Bytes32;
-pub type Hash32 = Bytes32;
-pub type BLSPubkey = [u8; 48];
-pub type KZGCommitment = Vector<u8, 48>;
-pub type BLSSignature = [u8; 96];
-pub type CommitteeIndex = u64;
-pub type Epoch = u64;
-pub type ValidatorIndex = u64;
-pub type WithdrawalIndex = u64;
-pub type Gwei = u64;
-pub type Transaction = List<u8, MAX_BYTES_PER_TRANSACTION>;
 
 #[derive(PartialEq, Eq, Debug, SimpleSerialize)]
 pub struct SignedBeaconBlockHeader {
@@ -359,6 +328,61 @@ impl ExecutionPayload {
 }
 
 #[derive(PartialEq, Eq, Debug, SimpleSerialize)]
+pub struct ExecutionPayloadHeader {
+    pub parent_hash: Hash32,
+    pub fee_recipient: ExecutionAddress,
+    pub state_root: Bytes32,
+    pub receipts_root: Bytes32,
+    pub logs_bloom: Vector<u8, BYTES_PER_LOGS_BLOOM>,
+    pub prev_randao: Bytes32,
+    pub block_number: u64,
+    pub gas_limit: u64,
+    pub gas_used: u64,
+    pub timestamp: u64,
+    pub extra_data: List<u8, MAX_EXTRA_DATA_BYTES>,
+    pub base_fee_per_gas: U256,
+    pub block_hash: Hash32,
+    pub transactions_root: Root,
+    pub withdrawals_root: Root,
+    pub blob_gas_used: u64,
+    pub excess_blob_gas: u64,
+}
+
+impl ExecutionPayloadHeader {
+    pub fn from_json(object: &Value) -> ExecutionPayloadHeader {
+        ExecutionPayloadHeader {
+            parent_hash: Root::from_string(&object["parent_hash"]),
+            fee_recipient: ExecutionAddress::from_string(&object["fee_recipient"]),
+            state_root: Root::from_string(&object["state_root"]),
+            receipts_root: Root::from_string(&object["receipts_root"]),
+            logs_bloom: Vector::<u8, BYTES_PER_LOGS_BLOOM>::try_from(Vec::<u8>::from_string(
+                &object["logs_bloom"],
+            ))
+            .unwrap(),
+            prev_randao: Root::from_string(&object["prev_randao"]),
+            block_number: object["block_number"].as_str().unwrap().parse().unwrap(),
+            gas_limit: object["gas_limit"].as_str().unwrap().parse().unwrap(),
+            gas_used: object["gas_used"].as_str().unwrap().parse().unwrap(),
+            timestamp: object["timestamp"].as_str().unwrap().parse().unwrap(),
+            extra_data: List::<u8, MAX_EXTRA_DATA_BYTES>::try_from(Vec::<u8>::from_string(
+                &object["extra_data"],
+            ))
+            .unwrap(),
+            base_fee_per_gas: U256::from_str_radix(
+                &object["base_fee_per_gas"].as_str().unwrap(),
+                10,
+            )
+            .unwrap(),
+            block_hash: Root::from_string(&object["block_hash"]),
+            transactions_root: Root::from_string(&object["transactions_root"]),
+            withdrawals_root: Root::from_string(&object["withdrawals_root"]),
+            blob_gas_used: object["blob_gas_used"].as_str().unwrap().parse().unwrap(),
+            excess_blob_gas: object["excess_blob_gas"].as_str().unwrap().parse().unwrap(),
+        }
+    }
+}
+
+#[derive(PartialEq, Eq, Debug, SimpleSerialize)]
 pub struct BeaconBlockBody {
     pub randao_reveal: BLSSignature,
     pub eth1_data: Eth1Data,
@@ -491,137 +515,5 @@ impl BeaconBlock {
             state_root: Root::from_string(&object["state_root"]),
             body: BeaconBlockBody::from_json(&object["body"]),
         }
-    }
-}
-
-#[derive(PartialEq, Eq, Debug, SimpleSerialize)]
-pub struct Transaction2 {
-    id: u8,
-}
-
-pub trait HexToBytes {
-    fn from_string(value: &Value) -> Self;
-}
-
-impl HexToBytes for Root {
-    fn from_string(value: &Value) -> Root {
-        hex::decode(value.as_str().unwrap().get(2..).unwrap())
-            .unwrap()
-            .try_into()
-            .unwrap()
-    }
-}
-
-impl HexToBytes for KZGCommitment {
-    fn from_string(value: &Value) -> KZGCommitment {
-        hex::decode(value.as_str().unwrap().get(2..).unwrap())
-            .unwrap()
-            .try_into()
-            .unwrap()
-    }
-}
-
-impl HexToBytes for BLSSignature {
-    fn from_string(value: &Value) -> BLSSignature {
-        hex::decode(value.as_str().unwrap().get(2..).unwrap())
-            .unwrap()
-            .try_into()
-            .unwrap()
-    }
-}
-
-impl HexToBytes for BLSPubkey {
-    fn from_string(value: &Value) -> BLSPubkey {
-        hex::decode(value.as_str().unwrap().get(2..).unwrap())
-            .unwrap()
-            .try_into()
-            .unwrap()
-    }
-}
-
-impl HexToBytes for ExecutionAddress {
-    fn from_string(value: &Value) -> ExecutionAddress {
-        hex::decode(value.as_str().unwrap().get(2..).unwrap())
-            .unwrap()
-            .try_into()
-            .unwrap()
-    }
-}
-
-impl HexToBytes for Transaction {
-    fn from_string(value: &Value) -> Transaction {
-        hex::decode(value.as_str().unwrap().get(2..).unwrap())
-            .unwrap()
-            .try_into()
-            .unwrap()
-    }
-}
-
-impl HexToBytes for Transaction2 {
-    fn from_string(value: &Value) -> Transaction2 {
-        let hex = hex::decode(value.as_str().unwrap().get(2..).unwrap()).unwrap();
-        Transaction2 { id: 1 }
-    }
-}
-
-impl HexToBytes for Vec<u8> {
-    fn from_string(value: &Value) -> Vec<u8> {
-        hex::decode(value.as_str().unwrap().get(2..).unwrap())
-            .unwrap()
-            .try_into()
-            .unwrap()
-    }
-}
-
-impl HexToBytes for Bits {
-    fn from_string(value: &Value) -> Bits {
-        let mut bits: Bits = vec![];
-        hex::decode(value.as_str().unwrap().get(2..).unwrap())
-            .unwrap()
-            .iter()
-            .for_each(|x| bits.append(&mut get_bits(x)));
-        bits
-    }
-}
-
-fn get_bits(number: &u8) -> Bits {
-    let mut bits: Bits = vec![];
-    let mut mask = 0xff;
-    while mask != 0 {
-        if (number & mask) != 0 {
-            bits.push(true);
-        } else {
-            bits.push(false);
-        }
-        mask >>= 1;
-    }
-    bits
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use serde_json::Value;
-
-    #[test]
-    fn it_converts_hex_to_bytes() {
-        let data = r#"
-            {
-                "randao_reveal": "0x8f90dcabf391dc8ac1a1c7e28614e3229c82adece090392c658cdefa61fb3411202ad44feb0bce1e58d03b0a48b1fa8b0f028681a8edadd24d2df792de917213aa767a5bd36a7c23d63c351cdd5df276ccbf60cfd478f58d558c4e9898e33b13"
-            }
-        "#;
-        let v: Value = serde_json::from_str(data).unwrap();
-
-        let res = BLSSignature::from_string(&v["randao_reveal"]);
-
-        assert_ne!(Some(res), None);
-    }
-
-    #[test]
-    fn it_decodes_transaction() {
-        // leaf -> 0x22f560a3e653dfd45dc7693214b5788f3838c87043819e33903828faa4b62c40
-        let res = Transaction2::from_string("0x02f8d301830bd698839c118f8501356d9f8983015f90940fac79e4e1346f160037e76a5238fee2617a4d3180b864c8fea2fb000000000000000000000000e03c23519e18d64f144d2800e30e81b0065c48b50000000000000000000000000f5d2fb29fb7d3cfee444a200298f468908cc9420000000000000000000000000000000000000000000000049a2413365a030000c001a0afdcb150943ba80d508daab4675dbc9a1494b73c7f71edbdaec222857edad428a04a5b044cbf841d474a0064787b3b22d6792b63ddc95793f8e5f3243bd5b2bb75");
-
-        assert_ne!(Some(res), None);
     }
 }
