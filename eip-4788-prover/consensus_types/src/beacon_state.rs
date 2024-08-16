@@ -125,12 +125,13 @@ impl Validator {
 #[derive(PartialEq, Eq, Debug, SimpleSerialize)]
 pub struct BeaconState {
     pub genesis_time: u64,
-    pub genesis_validator_root: Root,
+    pub genesis_validators_root: Root,
     pub slot: u64,
     pub fork: Fork,
     pub latest_block_header: BeaconBlockHeader,
     pub block_roots: Vector<Root, SLOTS_PER_HISTORICAL_ROOT>,
     pub state_roots: Vector<Root, SLOTS_PER_HISTORICAL_ROOT>,
+    pub historical_roots: List<Root, HISTORICAL_ROOTS_LIMIT>,
     pub eth1_data: Eth1Data,
     pub eth1_data_votes: List<Eth1Data, MAX_ETH1_DATA_VOTES>,
     pub eth1_deposit_index: u64,
@@ -157,7 +158,7 @@ impl BeaconState {
     pub fn from_json(object: &Value) -> BeaconState {
         BeaconState {
             genesis_time: object["genesis_time"].as_str().unwrap().parse().unwrap(),
-            genesis_validator_root: Root::from_string(&object["genesis_validator_root"]),
+            genesis_validators_root: Root::from_string(&object["genesis_validators_root"]),
             slot: object["slot"].as_str().unwrap().parse().unwrap(),
             fork: Fork::from_json(&object["fork"]),
             latest_block_header: BeaconBlockHeader::from_json(&object["latest_block_header"]),
@@ -172,6 +173,15 @@ impl BeaconState {
             .unwrap(),
             state_roots: Vector::<Root, SLOTS_PER_HISTORICAL_ROOT>::try_from(
                 object["state_roots"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .map(|x| Root::from_string(x))
+                    .collect::<Vec<Root>>(),
+            )
+            .unwrap(),
+            historical_roots: List::<Root, HISTORICAL_ROOTS_LIMIT>::try_from(
+                object["historical_roots"]
                     .as_array()
                     .unwrap()
                     .iter()

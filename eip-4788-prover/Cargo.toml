@@ -1,14 +1,7 @@
-[package]
-name = "eip-4788-prover"
-version = "0.1.0"
-edition = "2021"
-
 [workspace]
 members = [
   "prover",
+  "dbg",
   "consensus_types"
 ]
 
-[[bin]]
-name = "prover"
-path = "prover/src/main.rs"
