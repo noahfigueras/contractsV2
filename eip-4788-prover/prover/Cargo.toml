@@ -11,4 +11,5 @@ serde_json = "1.0.120"
 serde = { version = "1.0.204", features = ["derive"] }
 hex = "0.4.3"
 ssz_types = "0.6.0"
+reqwest = "0.12.7"
 
