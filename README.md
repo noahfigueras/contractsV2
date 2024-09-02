@@ -49,7 +49,11 @@ second missed slot they lose rewards ??
 Exemple: Slot 9312424 was missed by Validator index 692834. 
 
 To verify that a validator missed a slot  we'll need to compute [get_beacon_proposer_index()](https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/beacon-chain.md#get_beacon_proposer_index)
-inside the contract. 
+The following method can be used to compute the proposer_index. Note, that we do not 
+have to pass the complete validatorIndex array. Just submit a multi proof with the beacon state at x slot
+and the validatorIndex we need to verify should be fine.
+
+[compute_proposer_index()](`https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/beacon-chain.md#compute_proposer_index)
 
 4. Validator exits pool. Gets rewards and bond back if there is.
 

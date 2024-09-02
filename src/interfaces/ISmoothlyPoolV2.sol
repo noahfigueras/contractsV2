@@ -11,7 +11,10 @@ interface ISmoothlyPoolV2 {
     address indexed sender,
     uint256 value
   );
+  error CorrectFeeRecipient();
+  error NotOwner();
   error Unregistered();
+  error AlreadyRegistered();
   error WithdrawalsDisabled();
   error TimelockNotReached();
   error BondTooLow();

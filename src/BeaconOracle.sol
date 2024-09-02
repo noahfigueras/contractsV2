@@ -36,19 +36,17 @@ contract BeaconOracle is IBeaconOracle {
     bytes32[] calldata proof,
     uint256 validatorIndex,
     address feeRecipient,
-    uint64 timestamp,
-    uint64 parentTs
+    uint64 timestamp
   ) external returns(bool) {
-    if(indices.length != 3) revert LengthMismatch();
+    if(indices.length != 2) revert LengthMismatch();
 
     // Encode values to little endians
-    bytes32[] memory leaves = new bytes32[](3);
+    bytes32[] memory leaves = new bytes32[](2);
     leaves[0] = SSZ.toLittleEndian(validatorIndex);
     leaves[1] = bytes32(uint256(uint160(feeRecipient)) << 96);
-    leaves[2] = SSZ.toLittleEndian(timestamp);
 
     // Calculate root - If verifies, we can use the values
-    bytes32 blockRoot = getParentBlockRoot(parentTs);
+    bytes32 blockRoot = getParentBlockRoot(timestamp);
     bytes32 root = Merkle.calculateMultiMerkleRoot(proof, leaves, indices);
     if(root != blockRoot) revert InvalidProof();
 

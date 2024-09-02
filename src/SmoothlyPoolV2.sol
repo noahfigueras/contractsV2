@@ -4,9 +4,14 @@ pragma solidity ^0.8.24;
 import { ISmoothlyPoolV2 } from "./interfaces/ISmoothlyPoolV2.sol";
 import { BeaconOracle } from "./BeaconOracle.sol";
 import { SSZ } from "./libraries/SSZ.sol";
+import "openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
 import { console } from "forge-std/console.sol";
 
-contract SmoothlyPoolV2 is ISmoothlyPoolV2 {
+// TODO: Update EB + Voluntary Exits
+// TODO: Slashings
+// - Missed Proposal slash. All acumulated rewards go back to the pool.
+// - Bad Fee Recipient proposal. All acumulated rewards go back to the pool + bond.
+contract SmoothlyPoolV2 is ISmoothlyPoolV2, ReentrancyGuard {
   uint32 public constant REBALANCE_PERIOD = 7 days;
   uint32 public constant BPS = 10000;
   uint64 public constant BOND = 0.1 ether;
@@ -18,14 +23,20 @@ contract SmoothlyPoolV2 is ISmoothlyPoolV2 {
 
   BeaconOracle public oracle;
 
-  struct Registrant {
-    uint256 claimable;
+  struct Validator {
     uint64 effectiveBalance;
     address withdrawal;
+    uint256 start;
     uint256 bond;
   }
 
-  mapping(uint256 => Registrant) public registrants;
+  enum Slashes {
+    FeeRecipient,
+    Registration,
+    VoluntaryExit 
+  }
+
+  mapping(uint256 => Validator) public validators;
 
   constructor() {
     oracle = new BeaconOracle();
@@ -45,15 +56,18 @@ contract SmoothlyPoolV2 is ISmoothlyPoolV2 {
     uint64 ts
   ) external payable {
     if(msg.value != BOND) { revert BondTooLow(); }
+    if(validators[validatorIndex].start > 0) { revert AlreadyRegistered(); }
     uint256 time = block.timestamp;
     address withdrawal = msg.sender;
 
     oracle.verifyValidator(validatorProof, validator, gIndex, ts, withdrawal); // Should revert in case it's invalid
 
-    registrants[validatorIndex].withdrawal = withdrawal; 
-    registrants[validatorIndex].claimable = time; 
-    registrants[validatorIndex].effectiveBalance = validator.effectiveBalance; 
-    registrants[validatorIndex].bond = BOND; 
+    // TODO: ValidatorIndex can be faked in this case as we are not really verifying it
+    // Verify Inclusion
+    validators[validatorIndex].withdrawal = withdrawal; 
+    validators[validatorIndex].start = time; 
+    validators[validatorIndex].effectiveBalance = validator.effectiveBalance; 
+    validators[validatorIndex].bond = BOND; 
 
     totalBond += BOND;
     totalEB += validator.effectiveBalance;
@@ -67,48 +81,113 @@ contract SmoothlyPoolV2 is ISmoothlyPoolV2 {
     uint256[] calldata indices,
     bytes32[] calldata proof,
     uint256 validatorIndex,
-    uint64 timestamp,
-    uint64 parentTs
-  ) external {
-    Registrant memory registrant = registrants[validatorIndex];
-    if(registrant.claimable == 0) { revert Unregistered(); }
-    if(timestamp < registrant.claimable) { revert InvalidBlockTimestamp(); } 
+    uint64 timestamp
+  ) external nonReentrant {
+    Validator memory validator = validators[validatorIndex];
+    if(validator.start == 0) { revert Unregistered(); }
+    if(timestamp < validator.start) { revert InvalidBlockTimestamp(); } 
 
     oracle.verifyFeeRecipient(
       indices, 
       proof, 
       validatorIndex, 
       address(this), 
-      timestamp, 
-      parentTs
+      timestamp 
     );
 
-    _rebalance(block.timestamp);
-    (uint256 _eth, uint256 _smooths) = calculateShare(registrant);
-    _deallocateSmooths(_smooths);
-    registrant.claimable = lastRebalance;
+    _withdraw(validator);
+  }
 
-    // TODO: Test for reentrancy
-    (bool sent, ) = registrant.withdrawal.call{ value: _eth }("");
+  /// @dev updates Effective Balance 
+  function updateValidator(
+    uint256[] calldata indices,
+    bytes32[] calldata proof,
+    uint256 validatorIndex,
+    uint64 timestamp
+  ) external {
+    Validator memory validator = validators[validatorIndex];
+    if(validator.start == 0) { revert Unregistered(); }
+   // TODO: Updates validator state
+   // Updates Effective Balance if changed significally
+   // Updates exit_epoch if user already perform voluntaryExit flag as inactive
+     
+  }
+
+  /// @dev on Block Proposed with a bad fee_recipient, user loses stake + exits
+  function slashBadFeeRecipient(
+    uint256[] calldata indices,
+    bytes32[] calldata proof,
+    uint256 validatorIndex,
+    address feeRecipient,
+    uint64 timestamp
+  ) external nonReentrant {
+    Validator memory validator = validators[validatorIndex];
+    if(validator.start == 0) { revert Unregistered(); }
+    
+    oracle.verifyFeeRecipient(
+      indices, 
+      proof, 
+      validatorIndex, 
+      feeRecipient, 
+      timestamp 
+    );
+
+    if(feeRecipient == address(this)) { revert CorrectFeeRecipient(); }
+
+    totalEB -= validator.effectiveBalance; 
+    totalBond -= validator.bond;
+
+    (bool sent, ) = payable(msg.sender).call{ value: validator.bond }("");
     require(sent, "Failed to send ether");
+
+    _rebalance(block.timestamp);
+    delete validators[validatorIndex];
+  }
+
+  /// @notice Exits Pool
+  /// @dev Validator can exit any time but if he exits will lose accumulated
+  /// rewards since last block proposed.
+  function exit(uint256 validatorIndex) external nonReentrant {
+    Validator memory validator = validators[validatorIndex];
+    if(msg.sender != validator.withdrawal) { revert NotOwner(); }
+
+    totalEB -= validator.effectiveBalance; 
+    totalBond -= validator.bond;
+
+    (bool sent, ) = validator.withdrawal.call{ value: validator.bond }("");
+    require(sent, "Failed to send ether");
+
+    _rebalance(block.timestamp);
+    delete validators[validatorIndex];
   }
 
   /// @dev gets registrant by validator index
-  function getRegistrant(uint64 validatorIndex) external view returns (Registrant memory){
-    return registrants[validatorIndex];
+  function getValidator(uint64 validatorIndex) external view returns (Validator memory){
+    return validators[validatorIndex];
   }
 
   /// @dev calculates registrant share 
-  function calculateShare(Registrant memory registrant) 
+  function calculateShare(Validator memory validator) 
     public view returns (uint256 eth, uint256 share) {
-    if(registrant.claimable > lastRebalance) { revert WithdrawalsDisabled(); }
-    share = (lastRebalance - registrant.claimable) * registrant.effectiveBalance;
+    if(validator.start > lastRebalance) { revert WithdrawalsDisabled(); }
+    share = (lastRebalance - validator.start) * validator.effectiveBalance;
     eth = ((share * BPS / smooths) * totalETH()) / BPS;
   }
 
   /// @dev gets total amount of ETH in the pool 
   function totalETH() public view returns(uint256) {
     return address(this).balance - totalBond;
+  }
+
+  function _withdraw(Validator memory validator) internal {
+    _rebalance(block.timestamp);
+
+    (uint256 _eth, uint256 _smooths) = calculateShare(validator);
+    _deallocateSmooths(_smooths);
+    validator.start = lastRebalance;
+
+    (bool sent, ) = validator.withdrawal.call{ value: _eth }("");
+    require(sent, "Failed to send ether");
   }
 
   /// @dev Increase smooths tSupply accordingly

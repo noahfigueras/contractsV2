@@ -172,7 +172,7 @@ contract TestBeaconOracle is Test, IBeaconOracle {
     oracle = new BeaconOracle();
     assertEq(
       oracle.verifyFeeRecipient(
-        indices, proof, proposer_index, feeRecipient, uint64(timestamp), uint64(1718573135)
+        indices, proof, proposer_index, feeRecipient, uint64(1718573135)
     ), true);
   }
 
