@@ -1,85 +1,103 @@
-# Permissionless MEV Smoothing Pool
+Author: Noah Figueras 
+github: github.com/noahfigueras
 
-I believe it is possible to create a Permissionless MEV Smoothing Pool contract
-with the introduction of [eip-4788](https://eips.ethereum.org/EIPS/eip-4788).
+# A Permissionless MEV Smoothing Pool
 
-Eip-4788 allows us, to acess consensus information from the beacon chain through
-the `beacon_block_root`. Thus, enabling us verification of the beacon state in the
-EVM. We should be able to verify a validator, keep track of proposed blocks and 
-the `fee_recipient`.  
+## Introduction
+Existing implementations of MEV Smoothing Pools often rely on external oracles 
+to feed data into smart contracts. While these oracles are operated by trusted 
+entities, this trust introduces vulnerabilities. If an oracle is compromised, 
+it could lead to a breakdown in the system’s security, casting doubt on its 
+reliability. Moreover, maintaining oracles requires significant infrastructure, 
+which makes these systems expensive to operate. This, in turn, leads to user fees, 
+increasing the overall cost of participation.
 
-There are still some challenges to keep up to date with relay registrations to 
-build a fair system. Users can cheat the system if they change the `fee_recipient`.
-Therefore, we should penalized them for it. The only problem is that we can only 
-monitor that through the off-chan relay registrations API. One solution to that 
-might be to add some relay registration data in the blobspace and verify it somehow
-with the `beacon_block_root`.
+Until recently, this reliance on oracles was necessary because there was no way 
+to monitor the beacon chain state directly on-chain. However, with the introduction 
+of [EIP-4788](https://eips.ethereum.org/EIPS/eip-4788) as part of the Ethereum 
+Dencun upgrade, this limitation has been addressed.
 
-Something else to have into consideration is the introduction of `MAX_EFFECTIVE_BALANCE` 
-in [eip-7251](https://eips.ethereum.org/EIPS/eip-7251). This allows to have a validator
-with more power having more than `32 ETH`. Therefore a validator with `64 ETH` 
-should get a bigger share of rewards than a validator with `32 ETH`. Also, we are 
-going to introduce a **pro-rata share distribution** in this system. 
+EIP-4788 enables access to consensus information from the beacon chain via the 
+`beacon_block_root`, allowing smart contracts in the Ethereum Virtual Machine (EVM) 
+to verify the beacon state through Merkle proofs. This advancement opens the door 
+to a truly permissionless MEV Smoothing Pool.
 
-## Steps 
-1. User proofs that he's the owner of the validator. -> Registration 
+I propose a permissionless MEV Smoothing Pool implemented as a smart contract on 
+Ethereum, where the contract itself acts as the `fee_recipient` for all validators 
+who choose to register. Once deployed, the smoothing pool is designed to operate entirely 
+on its own, governed by transparent, on-chain logic without any centralized control.
 
-2. Validator can claim rewards only when a block is proposed. The rewards will be 
-calculated using a pro-rata share distribution using time and EB (staking power). 
-Time starts from day of registration and resets every time validator claims rewards. 
+The pooling of MEV rewards across multiple validators maximizes the potential 
+returns by aggregating MEV opportunities that would otherwise be captured individually. 
+By doing so, it creates a more predictable and stable revenue stream for participants. 
+Validators who join the pool contribute their MEV rewards, and at regular intervals, 
+the pool fairly distributes these rewards among participants based on a pro-rata 
+share of their contributions.
 
-3. Slashing of deactivation happens through a fraud proof, proving that a specific
-validator has proposed a block with an incorrect `fee_recipient`. This gives x%
-of the rewards to the observer submitting the fraud proof. The rest goes back to 
-the pool. Or there's the option to add a bond on registration and use that as a 
-reward for the observer. 
-To proof this we need to submit and verify a merkle-multi-proof. Proving the: 
-`fee_recipient, slot timestamp and validator index` of that specific slot. There's a time 
-barrier regarding the verification of the block as the beacon block root contract
-only gives around 1 day worth of the latest block roots. 
+This decentralized structure ensures that the distribution process is not only 
+efficient but also fair, with no single entity having the ability to manipulate 
+the rewards. All participants benefit equally based on their share of contributions, 
+fostering a cooperative and trustless environment. Furthermore, by eliminating 
+the costs associated with external infrastructure like oracles, this approach 
+reduces overhead, making it a cost-effective solution that avoids unnecessary user fees.
 
-To remove that barrier we'll have to submit a multi-proof concatenating (beaconBlock with beaconState) to retrieve
-a past root hash. beaconBlock -> beaconState -> historicalRoots[beaconBlockRootToProof]
-The issue here is that it takes a while to retrieve the beaconState (2-3 min) to 
-query. Also the proofs take a while as it's a lot of compute. 
+## Design
 
-Note: Not sure if we should add Missed Proposals into the slashing scenario. Every
-second missed slot they lose rewards ?? 
-* How do I actually prove that a validator missed a slot?
-Exemple: Slot 9312424 was missed by Validator index 692834. 
+In order to accomplish this, we need to be able to perform the following actions 
+on-chain. 
 
-To verify that a validator missed a slot  we'll need to compute [get_beacon_proposer_index()](https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/beacon-chain.md#get_beacon_proposer_index)
-The following method can be used to compute the proposer_index. Note, that we do not 
-have to pass the complete validatorIndex array. Just submit a multi proof with the beacon state at x slot
-and the validatorIndex we need to verify should be fine.
+1. Verification of an active validator on the beacon chain.
+2. Verification of a block proposed by a validator and its `fee_recipient`.
+3. Accounting for distribution of rewards based on active time and effective balance.
+4. Slashing mechanism to punish bad actors, mostly due to changing their `fee_recipient`. 
+5. Optionally there should be a mechanism to monitor missed proposals and punish
+a node that is not active accordingly. But, this needs further research to be 
+doable on-chain. Although this would make a better pool, it's not really necessary
+to create a fair `smoothing pool`.
 
-[compute_proposer_index()](`https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/beacon-chain.md#compute_proposer_index)
+A proposed flow will be the following.
 
-4. Validator exits pool. Gets rewards and bond back if there is.
+1. Validator changes his `fee_recipient` to the `smoothing pool` contract.
+2. Validator registers to the protocol with a stake fee.
+3. Validator proposes a block.
+4. Validator can claim a withdrawal submitting a proof of the latest block proposed with
+the `fee_recipient`.
 
-## Requirements 
-In order to verify some beacon state, we have to  submit a proof of the beacon 
-state with the information we need to verify. 
+Therefore a user that joins the pool, will have to propose a block with 
+the `fee_recipient` set to the pool address in order to claim rewards.
 
-1. We can do this by first querying the beacon API with: [getStateV2](https://ethereum.github.io/beacon-APIs/#/Debug/getStateV2).
+Note that there's a `stake fee` to join the pool, this is set in place to penalize
+a validator that proposes a block with the incorrect `fee_recipient`. Preventing 
+users to trick the protocol. [See](##Slashing)
 
-2. Create a proof for the state of the validator against the block by concatenating
-Gindices.
+### Verify a validator
+To register in the pool and start earning rewards, a user must prove on-chain 
+ownership of a validator.
 
-3. Verify proof on contract side using [eip-4788](https://eips.ethereum.org/EIPS/eip-4788)
-precompile contract. The contract stores the `parent_beacon_block_root` at timestamp.
-It is stored at `timestamp % HISTORY_BUFFER_LENGTH + HISTORY_BUFFER_LENGTH`.
+With EIP-4788, we can achieve this by submitting a Merkle proof of the validator’s 
+inclusion in the `BeaconState`. The process involves:
 
-Examples with timestamp `1713380903` at slot `8879740`.
+1. **Validator Index Proof** – Confirming that the validator exists in the beacon state.
+
+2. **Active Status Check** – Ensuring the validator is currently active.
+
+3. **Ownership Verification** – Matching the validator’s `withdrawal_credentials` 
+with `msg.sender`.
+
+**Validator Structure**
+
+```python
+class Validator(Container):
+    pubkey: BLSPubkey
+    withdrawal_credentials: Bytes32  # Commitment to pubkey for withdrawals
+    effective_balance: Gwei  # Balance at stake
+    slashed: boolean
+    # Status epochs
+    activation_eligibility_epoch: Epoch  # When criteria for activation were met
+    activation_epoch: Epoch
+    exit_epoch: Epoch
+    withdrawable_epoch: Epoch  # When validator can withdraw funds
 ```
-// Getting the storage slot directly
-curl -X POST --data '{"jsonrpc":"2.0", "method": "eth_getStorageAt", "params": ["0x000F3df6D732807Ef1319fB7B8bB8522d0Beac02", "0x0000000000000000000000000000000000000000000000000000000000002f40", "latest"], "id": 1}' $MAINNET_FORK
-// Using call method
-curl -X POST --data '{"jsonrpc":"2.0","method":"eth_call","params":[{"to": "0x000F3df6D732807Ef1319fB7B8bB8522d0Beac02", "input": "0x000000000000000000000000000000000000000000000000000000006620cf4b"}],"id":1}' $MAINNET_FORK
-```
-
-## Registration
-In order to verify a validator we can verify the beacon state through the `beacon_block_root`.
 ```python
 def is_active_validator(validator: Validator, epoch: Epoch) -> bool:
     """
@@ -88,86 +106,265 @@ def is_active_validator(validator: Validator, epoch: Epoch) -> bool:
     return validator.activation_epoch <= epoch < validator.exit_epoch
 ```
 
-valid and active. But how do we verify that the caller is the owner? 
+**Ownership Verification**
 
-1. We can do that through the withdrawals credentials. But then, the caller has
-to have changed their withdrawals credentials to an eth1 address. 
+A validator can register only if their `withdrawal_credentials` point to an 
+Ethereum `Eth1` address. However, this does not necessarily ensure compatibility 
+with restaking protocols.
 
-2. For restaking users coming from eigen layer we could verify it by calling 
-the withdrawal address(eigen  pod) and verify the owner of that contract with 
-`EigenPodManager.sol::hasPodg.sender)`
+For EigenLayer users, we could verify ownership by calling `EigenPodManager.sol::hasPod(msg.sender)`, 
+confirming that `msg.sender` controls the `EigenPod`.
 
-## Slashing mechanism
-Submitting fraud proofs is an idea for slashing someone that is missing slots or 
-changing `fee_recipient`.
+Alternatively, we could use `BLS` signature verification, where the validator 
+signs a transaction with their BLS private key. On-chain verification would then 
+check the signature against the validator’s `pubkey`, though this would require 
+a secure and efficient on-chain BLS verification library in `solidity`.
 
-We can only verify a change of `fee_recipient` if the validator proposes a block
-with the incorrect `fee_recipient` (one that is not the pool's address). This 
-can be verified sending a proof. 
-
-
-
-## Calculate rewards 
-
-In order to calculate rewards using a pro-rata based distribution, we need to 
-keep track of the time a user is been actively participating in the pool and 
-allocate him rewards based on timestamp and the EB provided by his validator. 
-
-For that, we define a constant `REBALANCE_PERIOD = 86400 * 7` (7 days) that specifies 
-the duration of a rebalance period. We can calculate the rewards using 
-the user claimable timestamp (updates after share is claimed) and EB against the 
-`lastRebalance` period timestamp. 
-
-In order to take into account other pool participants shares, we introduce two 
-variables to keep track of the totalSupply: 
-* `totalEB` keeps track of the total EB of the participants in the pool.
-* `smooths` keeps track of the total share of participants in the pool to be distributed.
+**Proof Submission Path**
 
 ```
-USER_SHARE = (lastRebalance - claimableTimestamp) * EB;
-USER_ETH_SHARE = (SHARE / smooths) * TOTAL_POOL_BALANCE;
+beacon_block_root → beacon_state_root → validators[validator_index] 
 ```
 
-Let's look at the following example:
+A validator proves their existence in the `BeaconState` by submitting a Merkle 
+proof from the `beacon_block_root` to their `validator_index`.
+
+### Verify validator blocks.
+ **NOTE**: This current setup only works for vanilla validator blocks (i.e., 
+ blocks built directly by the validator without `mev-boost`). Builders modify 
+ the `fee_recipient` in the `BeaconBlockBody`, making verification more complex. 
+ A standardized approach among builders is needed to ensure compatibility.
+ [see](###Security Considerations)
+
+Ensuring that a validator is consistently using the smoothing pool’s `fee_recipient`
+address is crucial for maintaining a fair distribution of rewards. Since rewards from MEV 
+and priority fees are routed through the `fee_recipient`, verifying that validators 
+do not redirect funds elsewhere is key to preventing malicious behavior.
+
+**Importance of Block Verification**
+
+A validator could change its `fee_recipient` at any time, redirecting MEV rewards 
+outside of the pool. On-chain verification ensures this does not happen without 
+a penalty.
+
+Users will only be able to claim their accrued rewards after their validator 
+proposes a block. By enforcing this we could verify that the `fee_recipient` in 
+that block is pointing to the pool address. This system mitigates attacks where a 
+validator tries to extract MEV unfairly. Validators must submit a Merkle proof 
+of their latest `BeaconBlock` to verify their `fee_recipient` in order to 
+claim rewards.
+
+**Proof Submission Path**
+
+To verify the `fee_recipient`, two possible proof paths exist:
+
+1. **Short-Term Proofs (~24 Hours Validity)**
 ```
-USER1 = {registrationTimestamp: 0, EB: 32 } // First day
-USER2 = {registrationTimestamp: 86400 * 3, EB: 64 } // Third day
-USER3 = {registrationTimestamp: 86400 * 6, EB: 32 } // Sixth day
-
-// After 1 rebalance of 7 days, participants try to claim their share.
-TOTAL_POOL_BALANCE = 1 ETH;
-LAST_REBALANCE = 86400 * 7 // 7 DAYS;
-
-SMOOTHS = (86400 * 7 * 32 + 86400 * 4 * 64 + 86400 * 32 ) // 44236800
-
-USER1_SHARE = (604800 - 0) * 32;
-USER1_ETH = (USER1_SHARE / SMOOTHS) * TOTAL_POOL_BALANCE; // 0.4375 ETH
-
-USER2_SHARE = (604800 - 86400 * 3) * 64;
-USER2_ETH = (USER1_SHARE / SMOOTHS) * TOTAL_POOL_BALANCE; // 0.5 ETH
-
-USER3_SHARE = (604800 - 86400 * 6) * 32;
-USER3_ETH = (USER1_SHARE / SMOOTHS) * TOTAL_POOL_BALANCE; // 0.0625 ETH
+beacon_block_root → body_root → execution_payload → fee_recipient 
 ```
+This approach relies on `EIP-4788`, which only stores `beacon_block_root` history 
+for one day. Proofs must be submitted within 24 hours, making it less flexible.
 
-## Generalized indices and Merkle Proofs
-
-If we need to proof some information stored in the beacon block body. It's easy.
-We just need to download the specific beacon block and get a proof for the value 
-we want to prove. If we need to prove a value that is inside the beacon state, 
-we need to submit a proof of that value in the beacon state against the beacon 
-block. In order to do this we need to concatenate proof branches and find the correct
-concatenated generalized index. 
-
-### Generalized Merkle tree index 
-In a binary Merkle tree, we define a "generalized index" of a node as 2 ** depth + index.
+2. **Long-Term Proofs (~26,131 Years Validity)**
 ```
-    1
- 2     3
-4 5   6 7
-   ...
+beacon_block_root → beacon_state_root → historical_roots[slot_index] → body_root → execution_payload → fee_recipient 
+ 
 ```
-Note that the generalized index has the convenient property that the two children 
-of node k are 2k and 2k+1.
+This path utilizes `historical_roots`, storing a much longer proof history. 
+However, generating these proofs may be computationally challenging.
+
+
+### Reward Distribution
+Rewards are distributed based on a **pro-rata share model**, which considers both 
+a validator's **effective balance (EB)** and the **time actively contributing** 
+to the pool. This ensures that validators who contribute longer and with a higher 
+stake receive a fairer share of the rewards.
+
+**Tracking Contributions**
+Each validator's rewards are calculated based on:
+
+1. **Time in the pool**: Starts from the validator's registration time and resets 
+upon claiming rewards.
+
+2. **Effective Balance (EB)**: The validator's stake to account for `MAX_EB`.
+
+3. **Total Pool Participation**: The sum of all active validators' contributions over 
+time.
+
+To fairly distribute rewards, we define a **Rebalancing Period**:
+
+* `REBALANCE_PERIOD = 21 days (1,814,400 seconds)` (This could be changed)
+* At the end of each period, the accumulated rewards are distributed proportionally.
+
+To account for the total pool participation, we maintain:
+
+* `totalEB`: The total **effective balance** of all participating validators.
+* `smooths`: A cumulative metric that tracks **weighted participation over time**.
+
+
+# **Reward Calculation Example (21-Day Rebalance Period)**
+
+## **Formula**
+The rewards are calculated based on **Effective Balance (EB)** and **Time Contributed (TC)** within the 21-day period.
+
+$$
+\text{USER\_SHARE} = (\text{lastRebalance} - \text{userTimeContributed}) \times \text{EB}
+$$
+
+$$
+\text{USER\_ETH\_SHARE} = \left( \frac{\text{USER\_SHARE}}{\text{smooths}} \right) \times \text{TOTAL\_POOL\_BALANCE}
+$$
+
+Where:
+- \( \text{USER\_SHARE} \) = Contribution based on time and EB.
+- \( \text{USER\_ETH\_SHARE} \) = User's proportional ETH rewards.
+- \( \text{smooths} \) = Sum of all USER\_SHARE values across validators.
+- \( \text{TOTAL\_POOL\_BALANCE} \) = The total ETH rewards collected for that period.
+
+---
+
+## **Example Calculation**
+- **Rebalance period**: **21 days** (604800 * 3 = 1814400 seconds)
+- **Total Pool Rewards**: **1 ETH**
+- **Users and their registration timestamps:**
+
+| User  | Registration Day | EB  | Time Contributed (sec) | User Share  | ETH Share |
+|-------|-----------------|----|---------------------|------------|----------|
+| **U1** | Day 1          | 32 | 1,814,400          | \( 1,814,400 \times 32 \) | **0.3889 ETH** |
+| **U2** | Day 5          | 64 | 1,468,800          | \( 1,468,800 \times 64 \) | **0.4630 ETH** |
+| **U3** | Day 10         | 32 | 1,209,600          | \( 1,209,600 \times 32 \) | **0.1915 ETH** |
+| **U4** | Day 15         | 32 | 950,400            | \( 950,400 \times 32 \)  | **0.1505 ETH** |
+| **U5** | Day 18         | 64 | 691,200            | \( 691,200 \times 64 \)  | **0.3028 ETH** |
+
+### **Total Smooths Calculation**
+$$
+\text{smooths} = (1814400 \times 32) + (1468800 \times 64) + (1209600 \times 32) + (950400 \times 32) + (691200 \times 64)
+$$
+$$
+\text{smooths} = 58,060,800 + 94,003,200 + 38,707,200 + 30,412,800 + 44,236,800 = 265,420,800
+$$
+
+---
+
+### **Reward Distribution**
+Each user's ETH share is calculated as:
+
+$$
+\text{USER\_ETH\_SHARE} = \left( \frac{\text{USER\_SHARE}}{\text{smooths}} \right) \times \text{TOTAL\_POOL\_BALANCE}
+$$
+
+- **U1**: \( (58,060,800 / 265,420,800) \times 1 = \mathbf{0.3889} \) ETH
+- **U2**: \( (94,003,200 / 265,420,800) \times 1 = \mathbf{0.4630} \) ETH
+- **U3**: \( (38,707,200 / 265,420,800) \times 1 = \mathbf{0.1915} \) ETH
+- **U4**: \( (30,412,800 / 265,420,800) \times 1 = \mathbf{0.1505} \) ETH
+- **U5**: \( (44,236,800 / 265,420,800) \times 1 = \mathbf{0.3028} \) ETH
+
+---
+
+Proposing a block will enable a validator to claim their accrued rewards. On 
+whithdrawal, their contribution is removed from smooths to maintain accurate 
+distribution.
+
+### **Key Takeaways**
+- **Users who join earlier receive a higher share of rewards** since their **Time Contributed (TC)** is higher.
+- **Higher EB (Effective Balance) validators** receive more rewards since they contribute more security.
+- **Rebalance period impacts reward distribution**—longer periods favor early joiners.
+
+---
+
+### Slashing
+
+To maintain a **permissionless** and **trust-minimized** staking system, validators 
+must stake **collateral ETH** to ensure honest participation. This stake serves 
+as an **economic deterrent** against malicious actions.
+
+A proposed stake amount is **0.3 ETH**, which should be greater than the average 
+MEV reward per block. This ensures that dishonest behavior is penalized.
+
+#### Conditions for Slashing
+A validator can be penalized under the following condition:
+
+**Fee Recipient Manipulation (Critical Misbehavior)**
+* Each validator must set their `fee_recipient` address to the **pool contract 
+address** to ensure fair distribution of rewards.
+
+* If a validator **modifies their** `fee_recipient` **to any other address**, before
+exiting the pool, they will be **immediately penalized**, losing their **entire 0.3 ETH 
+stake** and **exiting the pool**.
+
+* This prevents validators from **stealing MEV and priority fees** meant for the 
+pool participants.
+
+#### Missed Proposals (Future Consideration)
+Ideally, validators who **miss their block proposals** should also be **penalized**
+to prevent inactivity that harms the pool. However, there is currently **no easy 
+on-chain mechanism** to track missed proposals **without additional infrastructure**. 
+This remains an area for **future research**.
+
+
+#### On-Chain Fraud Proofs
+To ensure **trustless enforcement**, slashing must be provable on-chain via fraud 
+proofs.
+
+* Any user can submit a **Merkle proof** of a **block proposed** by a validator 
+with `validator_index = x`, showing that the `fee_recipient` was **set to an 
+unauthorized address**.
+
+* This proof serves as **verifiable evidence** that the validator **violated the 
+protocol**, triggering automatic slashing.
+
+**Slasher Incentives**   
+To encourage participation in fraud-proof submission, a **Slasher Role** is 
+introduced:
+
+1. **Slasher Reward**: The **slasher receives a percentage** of the slashed 
+validator’s stake as a **bounty** for submitting proof.
+
+2. **Pool Reimbursement**: The **remaining stake is redistributed** to the pool 
+to **compensate affected participants**.
+
+
+### Security Considerations
+The current implementation only supports **vanilla blocks**. This is because 
+**MEV-Boost builders** follow **different methods** for distributing MEV rewards 
+to the `fee_recipient`, making it more complex to verify blocks produced via 
+**external builders**.
+
+**Potential Risk: MEV-Boost Incompatibility**
+* If a **builder adopts a new standard** for passing MEV rewards to the `fee_recipient`, 
+and the pool contract **does not properly account for this behavior**, validators 
+using that builder **may be incorrectly slashed**.
+
+* Malicious `SLASHERS` could exploit this inconsistency to **submit fraudulent 
+fraud proofs**, unjustly slashing honest validators and **stealing their stake**.
+
+**Mitigation Strategies**
+To prevent wrongful slashing and improve security:
+
+1. **Standardized MEV Distribution**: Encourage builders to follow a **transparent 
+and verifiable** standard for MEV payouts, ensuring compatibility.
+
+2. **Appeal Mechanism**: Introduce a **grace period** or **appeal system** where validators 
+can dispute incorrect slashing claims before penalties are enforced.
+
+### Things that still need some research
+
+An important area to focus on is to propose a standard for the builders to pass 
+the `fee_recipient`. As `mev-boost` is beneficial to increase the chance of higher
+mev for produced blocks. Idea: Universal contract that realays payments.
+
+The verification and generation of `multi_proofs` for some scnearios need to be 
+researched and improved. There's some real time limits in some cases, where proofs
+are too big or take too long to submit. 
+
+Research verification of missed slots on chain, is that possible??
+
+Monitor for missed slots would be ideal but as far as my knowledge goes it is
+not really doable to proof that on-chain. Because in order to compute the `validator_index`
+at slot `x` from the beacon state we'll have to pass the full validator array. 
+See here: [compute_proposer_index()](`https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/beacon-chain.md#compute_proposer_index)
+
+Further research is required for missed slot verification on-chain and improved 
+multi-proof generation techniques. Contributions are welcome at [https://github.com/noahfigueras/contractsV2](https://github.com/noahfigueras/contractsV2).
 
 
