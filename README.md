@@ -244,11 +244,6 @@ Proposing a block will enable a validator to claim their accrued rewards. On
 whithdrawal, their contribution is removed from smooths to maintain accurate 
 distribution.
 
-#### Key Takeaways 
-- **Users who join earlier receive a higher share of rewards** since their 
-**Time Contributed (TC)** is higher.
-- **Higher EB (Effective Balance) validators** receive more rewards since they 
-are likely to propose more blocks.
 
 
 ### Slashing
