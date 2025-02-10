@@ -207,19 +207,18 @@ To account for the total pool participation, we maintain:
 #### Formula
 The rewards are calculated based on **Effective Balance (EB)** and **Time Contributed (TC)** within the 21-day period.
 
-$$
-\text{USER\_SHARE} = (\text{lastRebalance} - \text{userTimeContributed}) \times \text{EB}
-$$
-
-$$
-\text{USER\_ETH\_SHARE} = \left( \frac{\text{USER\_SHARE}}{\text{smooths}} \right) \times \text{TOTAL\_POOL\_BALANCE}
-$$
+```
+USER_SHARE = (lastRebalanceTimestamp - userTimeContributed) * EB
+smooths = SUM(USER_SHARE for all users)
+USER_ETH_SHARE = (USER_SHARE / smooths) * TOTAL_POOL_BALANCE
+```
 
 Where:
-- \( \text{USER\_SHARE} \) = Contribution based on time and EB.
-- \( \text{USER\_ETH\_SHARE} \) = User's proportional ETH rewards.
-- \( \text{smooths} \) = Sum of all USER\_SHARE values across validators.
-- \( \text{TOTAL\_POOL\_BALANCE} \) = The total ETH rewards collected for that period.
+- `USER_SHARE` = Contribution based on time and EB.
+- `USER_ETH_SHARE` = User's proportional ETH rewards.
+- `smooths` = Sum of all `USER_SHARE` values across validators.
+- `TOTAL_POOL_BALANCE` = The total ETH rewards collected for that period.
+
 
 ---
 
@@ -239,19 +238,6 @@ Where:
 #### Total Smooths Calculation
 $\text{smooths} = (1814400 \times 32) + (1468800 \times 64) + (1209600 \times 32) + (950400 \times 32) + (691200 \times 64)$
 $\text{smooths} = 58,060,800 + 94,003,200 + 38,707,200 + 30,412,800 + 44,236,800 = 265,420,800$
-
----
-
-#### Reward Distribution
-Each user's ETH share is calculated as:
-
-$\text{USER\_ETH\_SHARE} = \left( \frac{\text{USER\_SHARE}}{\text{smooths}} \right) \times \text{TOTAL\_POOL\_BALANCE}$
-
-- **U1**: $\( (58,060,800 / 265,420,800) \times 1 = \mathbf{0.3889} \)$ ETH
-- **U2**: $\( (94,003,200 / 265,420,800) \times 1 = \mathbf{0.4630} \)$ ETH
-- **U3**: $\( (38,707,200 / 265,420,800) \times 1 = \mathbf{0.1915} \)$ ETH
-- **U4**: $\( (30,412,800 / 265,420,800) \times 1 = \mathbf{0.1505} \)$ ETH
-- **U5**: $\( (44,236,800 / 265,420,800) \times 1 = \mathbf{0.3028} \)$ ETH
 
 ---
 
