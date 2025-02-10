@@ -239,18 +239,17 @@ Where:
 $\text{smooths} = (1814400 \times 32) + (1468800 \times 64) + (1209600 \times 32) + (950400 \times 32) + (691200 \times 64)$
 $\text{smooths} = 58,060,800 + 94,003,200 + 38,707,200 + 30,412,800 + 44,236,800 = 265,420,800$
 
----
 
 Proposing a block will enable a validator to claim their accrued rewards. On 
 whithdrawal, their contribution is removed from smooths to maintain accurate 
 distribution.
 
 #### Key Takeaways 
-- **Users who join earlier receive a higher share of rewards** since their **Time Contributed (TC)** is higher.
-- **Higher EB (Effective Balance) validators** receive more rewards since they contribute more security.
-- **Rebalance period impacts reward distribution**—longer periods favor early joiners.
+- **Users who join earlier receive a higher share of rewards** since their 
+**Time Contributed (TC)** is higher.
+- **Higher EB (Effective Balance) validators** receive more rewards since they 
+are likely to propose more blocks.
 
----
 
 ### Slashing
 
