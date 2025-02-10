@@ -180,7 +180,7 @@ a validator's **effective balance (EB)** and the **time actively contributing**
 to the pool. This ensures that validators who contribute longer and with a higher 
 stake receive a fairer share of the rewards.
 
-**Tracking Contributions**
+#### Tracking Contributions
 Each validator's rewards are calculated based on:
 
 1. **Time in the pool**: Starts from the validator's registration time and resets 
@@ -202,9 +202,9 @@ To account for the total pool participation, we maintain:
 * `smooths`: A cumulative metric that tracks **weighted participation over time**.
 
 
-# **Reward Calculation Example (21-Day Rebalance Period)**
+#### Reward Calculation Example (21-Day Rebalance Period)
 
-## **Formula**
+#### Formula
 The rewards are calculated based on **Effective Balance (EB)** and **Time Contributed (TC)** within the 21-day period.
 
 $$
@@ -223,41 +223,35 @@ Where:
 
 ---
 
-## **Example Calculation**
+#### Example Calculation
 - **Rebalance period**: **21 days** (604800 * 3 = 1814400 seconds)
 - **Total Pool Rewards**: **1 ETH**
 - **Users and their registration timestamps:**
 
 | User  | Registration Day | EB  | Time Contributed (sec) | User Share  | ETH Share |
 |-------|-----------------|----|---------------------|------------|----------|
-| **U1** | Day 1          | 32 | 1,814,400          | \( 1,814,400 \times 32 \) | **0.3889 ETH** |
-| **U2** | Day 5          | 64 | 1,468,800          | \( 1,468,800 \times 64 \) | **0.4630 ETH** |
-| **U3** | Day 10         | 32 | 1,209,600          | \( 1,209,600 \times 32 \) | **0.1915 ETH** |
-| **U4** | Day 15         | 32 | 950,400            | \( 950,400 \times 32 \)  | **0.1505 ETH** |
-| **U5** | Day 18         | 64 | 691,200            | \( 691,200 \times 64 \)  | **0.3028 ETH** |
+| **U1** | Day 1          | 32 | 1,814,400          | $\( 1,814,400 \times 32 \)$ | **0.3889 ETH** |
+| **U2** | Day 5          | 64 | 1,468,800          | $\( 1,468,800 \times 64 \)$ | **0.4630 ETH** |
+| **U3** | Day 10         | 32 | 1,209,600          | $\( 1,209,600 \times 32 \)$ | **0.1915 ETH** |
+| **U4** | Day 15         | 32 | 950,400            | $\( 950,400 \times 32 \)$  | **0.1505 ETH** |
+| **U5** | Day 18         | 64 | 691,200            | $\( 691,200 \times 64 \)$  | **0.3028 ETH** |
 
-### **Total Smooths Calculation**
-$$
-\text{smooths} = (1814400 \times 32) + (1468800 \times 64) + (1209600 \times 32) + (950400 \times 32) + (691200 \times 64)
-$$
-$$
-\text{smooths} = 58,060,800 + 94,003,200 + 38,707,200 + 30,412,800 + 44,236,800 = 265,420,800
-$$
+#### Total Smooths Calculation
+$\text{smooths} = (1814400 \times 32) + (1468800 \times 64) + (1209600 \times 32) + (950400 \times 32) + (691200 \times 64)$
+$\text{smooths} = 58,060,800 + 94,003,200 + 38,707,200 + 30,412,800 + 44,236,800 = 265,420,800$
 
 ---
 
-### **Reward Distribution**
+#### Reward Distribution
 Each user's ETH share is calculated as:
 
-$$
-\text{USER\_ETH\_SHARE} = \left( \frac{\text{USER\_SHARE}}{\text{smooths}} \right) \times \text{TOTAL\_POOL\_BALANCE}
-$$
+$\text{USER\_ETH\_SHARE} = \left( \frac{\text{USER\_SHARE}}{\text{smooths}} \right) \times \text{TOTAL\_POOL\_BALANCE}$
 
-- **U1**: \( (58,060,800 / 265,420,800) \times 1 = \mathbf{0.3889} \) ETH
-- **U2**: \( (94,003,200 / 265,420,800) \times 1 = \mathbf{0.4630} \) ETH
-- **U3**: \( (38,707,200 / 265,420,800) \times 1 = \mathbf{0.1915} \) ETH
-- **U4**: \( (30,412,800 / 265,420,800) \times 1 = \mathbf{0.1505} \) ETH
-- **U5**: \( (44,236,800 / 265,420,800) \times 1 = \mathbf{0.3028} \) ETH
+- **U1**: $\( (58,060,800 / 265,420,800) \times 1 = \mathbf{0.3889} \)$ ETH
+- **U2**: $\( (94,003,200 / 265,420,800) \times 1 = \mathbf{0.4630} \)$ ETH
+- **U3**: $\( (38,707,200 / 265,420,800) \times 1 = \mathbf{0.1915} \)$ ETH
+- **U4**: $\( (30,412,800 / 265,420,800) \times 1 = \mathbf{0.1505} \)$ ETH
+- **U5**: $\( (44,236,800 / 265,420,800) \times 1 = \mathbf{0.3028} \)$ ETH
 
 ---
 
@@ -265,7 +259,7 @@ Proposing a block will enable a validator to claim their accrued rewards. On
 whithdrawal, their contribution is removed from smooths to maintain accurate 
 distribution.
 
-### **Key Takeaways**
+#### Key Takeaways 
 - **Users who join earlier receive a higher share of rewards** since their **Time Contributed (TC)** is higher.
 - **Higher EB (Effective Balance) validators** receive more rewards since they contribute more security.
 - **Rebalance period impacts reward distribution**—longer periods favor early joiners.
